@@ -15,6 +15,7 @@
 - ESLint `gas` preset for Apps Script TypeScript, with a `web` option for browser sources and a `node` preset for plain JavaScript tooling
 - `gas-dev-config check` reports drift of the files that cannot be extended: `.gitignore`, `.prettierignore`, `.github/dependabot.yml` and the standard `package.json` scripts
 - The check is read-only: it never writes to your project
+- `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
 - Plain ESM JavaScript, no build step
 
 ## Requirements
@@ -204,6 +205,70 @@ export default gasEslint(
   },
 );
 ```
+
+## Test loader
+
+Apps Script sources share one global scope and have no `import` or `export`, so a test cannot import them. `createGasLoader` from `gas-dev-config/test` transpiles the files once, concatenates them in load order and compiles a single `node:vm` script. Each call of the returned function evaluates it in a fresh context built from the globals you pass, so no state leaks between tests.
+
+```ts
+// test/harness.ts
+import { createGasLoader } from 'gas-dev-config/test';
+
+const load = createGasLoader({
+  files: ['src/gas-logger.types.ts', 'src/gas-logger.class.ts'],
+  exports: ['GasLogger'],
+});
+
+const { GasLogger } = load({ console, SpreadsheetApp, Logger });
+```
+
+| Option    | Default         | Description                                                                 |
+| --------- | --------------- | --------------------------------------------------------------------------- |
+| `files`   | required        | Non-empty array of source files in load order; later files see earlier ones |
+| `exports` | required        | Non-empty array of global names (classes, functions, constants) to return   |
+| `root`    | `process.cwd()` | Directory the `files` are resolved against                                  |
+
+- Unknown options and invalid values throw a `TypeError` naming the option.
+- A source file that cannot be read throws at creation, naming its resolved path.
+- An `exports` name that the sources do not define throws when loading, naming it.
+- Files are read and transpiled once, at creation; `load` only runs the compiled script.
+
+### Sharing `Error`
+
+A vm context has its own built-ins, so an error thrown by the sources is not `instanceof Error` in the test realm. Pass the host `Error` to share it:
+
+```ts
+const { GasError } = load({ Session, console, Error });
+
+expect(new GasError('boom')).toBeInstanceOf(Error);
+```
+
+### Typing the result
+
+The exports are not inferred from the sources. Supply their shape as the type argument; without it the result is `Record<string, unknown>`.
+
+```ts
+import { createGasLoader } from 'gas-dev-config/test';
+
+interface GasLoggerInstance {
+  info(msg: string, meta?: Record<string, unknown>): void;
+}
+
+interface GasLoggerExports {
+  GasLogger: new (options?: { level?: string }) => GasLoggerInstance;
+}
+
+const load = createGasLoader<GasLoggerExports>({
+  files: ['src/gas-logger.types.ts', 'src/gas-logger.class.ts'],
+  exports: ['GasLogger'],
+});
+
+export function loadGasLogger(globals: Record<string, unknown> = {}) {
+  return load({ console, ...globals }).GasLogger;
+}
+```
+
+The types ship as `test-loader/types.d.ts`, so consumers with `moduleResolution: bundler` (such as `gas-dev-config/tsconfig/test.json`) need no `allowJs`.
 
 ## Config check
 

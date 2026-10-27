@@ -25,7 +25,8 @@
     "eslint",
     "tsconfig",
     "prettier.json",
-    "templates"
+    "templates",
+    "test-loader"
   ],
   "prettier": {
     "singleQuote": true
@@ -62,6 +63,10 @@
   "exports": {
     "./eslint": "./eslint/index.js",
     "./prettier": "./prettier.json",
+    "./test": {
+      "types": "./test-loader/types.d.ts",
+      "default": "./test-loader/index.js"
+    },
     "./tsconfig/*": "./tsconfig/*",
     "./package.json": "./package.json"
   },
