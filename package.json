@@ -27,13 +27,21 @@
   "prettier": {
     "singleQuote": true
   },
-  "devDependencies": {
+  "dependencies": {
     "@eslint/js": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "typescript-eslint": "^8.65.0"
+  },
+  "peerDependencies": {
+    "eslint": "^10.7.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
     "@types/google-apps-script": "^2.0.13",
     "@types/node": "^22.20.5",
     "eslint": "^10.7.0",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.7.0",
     "prettier": "^3.9.6",
     "typescript": "^5.9.3",
     "vitest": "^5.0.3"
@@ -49,6 +57,7 @@
     "test:watch": "vitest"
   },
   "exports": {
+    "./eslint": "./eslint/index.js",
     "./prettier": "./prettier.json",
     "./tsconfig/*": "./tsconfig/*",
     "./package.json": "./package.json"
