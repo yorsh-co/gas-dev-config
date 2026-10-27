@@ -1,0 +1,4 @@
+{
+  "extends": "gas-dev-config/tsconfig/test.json",
+  "include": ["harness.ts"]
+}
