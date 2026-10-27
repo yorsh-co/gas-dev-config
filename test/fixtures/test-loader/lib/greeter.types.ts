@@ -1,0 +1,3 @@
+interface GreeterOptions {
+  greeting?: string;
+}
