@@ -1,0 +1,1 @@
+{ "extends": "gas-dev-config/tsconfig/test.json", "include": ["test/**/*.ts"] }

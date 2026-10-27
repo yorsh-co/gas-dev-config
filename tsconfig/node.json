@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+
+    // Type-check plain JavaScript (JSDoc); nothing is emitted.
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+
+    // Stricter type checking
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "skipLibCheck": true
+  }
+}
