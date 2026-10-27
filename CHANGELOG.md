@@ -2,6 +2,15 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- Test loader `createGasLoader({ files, exports, root })`, exported as `gas-dev-config/test`: transpiles Apps Script sources once and evaluates them in a fresh `node:vm` context per call, returning the requested globals; with option validation, clear errors for missing files and exports, and hand-written types (generic over the exports shape)
+- Tests for the loader, including a TypeScript consumer type-check
+
+---
+
 ## [1.0.0] - 2026-10-27
 
 ### Added
