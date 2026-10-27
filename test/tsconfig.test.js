@@ -1,0 +1,130 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { REPO_ROOT, createProject } from './support.js';
+
+const TSC = join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
+
+/**
+ * Effective compilerOptions of gas-error 1.1.0's tsconfig.json
+ * (`tsc --showConfig`), without the path-relative `rootDir`/`outDir`.
+ */
+const GAS_ERROR_OPTIONS = {
+  target: 'es2021',
+  types: ['google-apps-script'],
+  lib: ['es2021'],
+  declaration: true,
+  noUncheckedIndexedAccess: true,
+  exactOptionalPropertyTypes: true,
+  strict: true,
+  noEmitOnError: true,
+  verbatimModuleSyntax: true,
+  isolatedModules: true,
+  noUncheckedSideEffectImports: true,
+  skipLibCheck: true,
+  forceConsistentCasingInFileNames: true,
+  module: 'es6',
+  moduleResolution: 'classic',
+  preserveConstEnums: true,
+  noImplicitAny: true,
+  noImplicitThis: true,
+  strictNullChecks: true,
+  strictFunctionTypes: true,
+  strictBindCallApply: true,
+  strictPropertyInitialization: true,
+  strictBuiltinIteratorReturn: true,
+  alwaysStrict: true,
+  useUnknownInCatchVariables: true,
+};
+
+/**
+ * Runs `tsc -p` on a project that extends a shared config and includes one file.
+ *
+ * @param {string} dir Project directory.
+ * @param {string} config Shared config name, e.g. `gas`.
+ * @param {string} file File to compile, relative to the project.
+ * @returns {{ status: number | null, output: string }}
+ */
+function compile(dir, config, file) {
+  writeFileSync(
+    join(dir, 'tsconfig.json'),
+    JSON.stringify({
+      extends: `gas-dev-config/tsconfig/${config}.json`,
+      compilerOptions: { noEmit: true },
+      include: [file],
+    }),
+  );
+  const result = spawnSync(TSC, ['-p', dir], { encoding: 'utf8' });
+  return { status: result.status, output: result.stdout + result.stderr };
+}
+
+describe.each([
+  { config: 'gas', ok: 'ok.ts', bad: 'bad.ts', error: /'document'/ },
+  { config: 'web', ok: 'ok.ts', bad: 'bad.ts', error: /'SpreadsheetApp'/ },
+  { config: 'test', ok: 'ok.ts', bad: 'bad.ts', error: /not assignable/ },
+  { config: 'node', ok: 'ok.js', bad: 'bad.js', error: /not assignable/ },
+])('tsconfig/$config.json', ({ config, ok, bad, error }) => {
+  /** @type {ReturnType<typeof createProject>} */
+  let project;
+
+  beforeAll(() => {
+    project = createProject(`tsconfig/${config}`);
+  });
+
+  afterAll(() => project.cleanup());
+
+  it('is resolvable through the package exports map and compiles valid code', () => {
+    const { status, output } = compile(project.dir, config, ok);
+    expect(output).toBe('');
+    expect(status).toBe(0);
+  });
+
+  it('rejects invalid code', () => {
+    const { status, output } = compile(project.dir, config, bad);
+    expect(status).not.toBe(0);
+    expect(output).toMatch(error);
+  });
+});
+
+describe('tsconfig/gas.json', () => {
+  /** @type {ReturnType<typeof createProject>} */
+  let project;
+
+  beforeAll(() => {
+    project = createProject('tsconfig/gas');
+  });
+
+  afterAll(() => project.cleanup());
+
+  it('has the same effective compilerOptions as the gas-error tsconfig', () => {
+    writeFileSync(
+      join(project.dir, 'tsconfig.json'),
+      JSON.stringify({
+        extends: 'gas-dev-config/tsconfig/gas.json',
+        include: ['ok.ts'],
+      }),
+    );
+    const { compilerOptions } = JSON.parse(
+      execFileSync(TSC, ['--showConfig', '-p', project.dir], {
+        encoding: 'utf8',
+      }),
+    );
+    expect(compilerOptions).toEqual(GAS_ERROR_OPTIONS);
+  });
+});
+
+describe('package exports', () => {
+  it('ships every config referenced by the exports map', () => {
+    const pkg = JSON.parse(
+      readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'),
+    );
+    expect(pkg.exports).toMatchObject({
+      './prettier': './prettier.json',
+      './tsconfig/*': './tsconfig/*',
+    });
+    expect(pkg.files).toEqual(
+      expect.arrayContaining(['prettier.json', 'tsconfig']),
+    );
+  });
+});

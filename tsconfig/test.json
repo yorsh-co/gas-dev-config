@@ -1,0 +1,10 @@
+{
+  "extends": "./gas.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "declaration": false,
+    "types": ["node", "google-apps-script"]
+  }
+}
