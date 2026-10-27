@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    // Environment
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "types": ["google-apps-script"],
+
+    // Outputs
+    "declaration": true,
+    "noEmitOnError": true,
+
+    // Stricter type checking
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Module hygiene
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+
+    // Compatibility
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

@@ -17,5 +17,6 @@
 
     "skipLibCheck": true
   },
-  "include": ["bin/**/*.js", "eslint/**/*.js", "test/**/*.js"]
+  "include": ["bin/**/*.js", "eslint/**/*.js", "test/**/*.js"],
+  "exclude": ["test/fixtures/**"]
 }
