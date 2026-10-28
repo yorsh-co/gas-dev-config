@@ -15,7 +15,7 @@ Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
 standard package.json scripts from the preset templates. Never writes.
 
 The preset is read from package.json: "gasDevConfig": { "preset": "gas" | "node" }
-(default: gas).
+(default: gas). "loadOrder" and "peers" are also validated.
 
 Commands:
   check          Compare the project in the current directory with the templates
