@@ -17,3 +17,13 @@ export interface GasLoaderOptions {
 export function createGasLoader<T extends object = Record<string, unknown>>(
   options: GasLoaderOptions,
 ): (globals?: Record<string, unknown>) => T;
+
+/**
+ * Lists the files named by `gasDevConfig.loadOrder` in `<root>/package.json`
+ * as `src/`-prefixed paths, for `GasLoaderOptions.files`. Entries are not
+ * validated here; `gas-dev-config check` does that.
+ *
+ * @param root Project directory; defaults to `process.cwd()`.
+ * @throws {Error} When package.json is unreadable or invalid, or the load order is missing or malformed.
+ */
+export function loadOrderFiles(root?: string): string[];

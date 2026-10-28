@@ -1,6 +1,6 @@
 // @ts-check
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import vm from 'node:vm';
 import ts from 'typescript';
 
@@ -142,4 +142,31 @@ export function createGasLoader(options) {
     }
     return /** @type {T} */ (exported);
   };
+}
+
+/**
+ * Lists the source files named by `gasDevConfig.loadOrder` in package.json, as
+ * `src/`-prefixed POSIX paths relative to `root`, ready for `createGasLoader`.
+ * Path validation is left to `gas-dev-config check`.
+ *
+ * @param {string} [root] Project directory; defaults to `process.cwd()`.
+ * @returns {string[]}
+ * @throws {Error} When package.json is unreadable or invalid, or `gasDevConfig.loadOrder` is not a non-empty array of non-empty strings.
+ */
+export function loadOrderFiles(root = process.cwd()) {
+  const path = join(root, 'package.json');
+  /** @type {any} */
+  let pkg;
+  try {
+    pkg = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (cause) {
+    throw new Error(`loadOrderFiles: cannot read ${path}`, { cause });
+  }
+  const loadOrder = pkg?.gasDevConfig?.loadOrder;
+  if (!isNonEmptyStringArray(loadOrder)) {
+    throw new Error(
+      `loadOrderFiles: "gasDevConfig.loadOrder" in ${path} must be a non-empty array of non-empty strings`,
+    );
+  }
+  return loadOrder.map((entry) => `src/${entry}`);
 }

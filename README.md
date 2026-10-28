@@ -233,6 +233,25 @@ const { GasLogger } = load({ console, SpreadsheetApp, Logger });
 - An `exports` name that the sources do not define throws when loading, naming it.
 - Files are read and transpiled once, at creation; `load` only runs the compiled script.
 
+### Load order from `package.json`
+
+Keep the load order in one place: `gasDevConfig.loadOrder` in `package.json` (see [Config check](#config-check)). `loadOrderFiles(root?)` returns it as `src/`-prefixed POSIX paths relative to `root` (default `process.cwd()`), ready for `files`:
+
+```ts
+import { createGasLoader, loadOrderFiles } from 'gas-dev-config/test';
+
+const ROOT = process.cwd();
+
+const load = createGasLoader({
+  files: loadOrderFiles(ROOT),
+  exports: ['GasSheetDb'],
+  root: ROOT,
+});
+```
+
+- It throws an `Error` prefixed `loadOrderFiles:` when `package.json` cannot be read or parsed (naming its path, with the original error as `cause`), or when `gasDevConfig.loadOrder` is missing or not a non-empty array of non-empty strings.
+- It does not validate the paths; `gas-dev-config check` does.
+
 ### Sharing `Error`
 
 A vm context has its own built-ins, so an error thrown by the sources is not `instanceof Error` in the test realm. Pass the host `Error` to share it:
@@ -299,7 +318,25 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 }
 ```
 
-Any other `gasDevConfig` key or preset value is an error.
+`loadOrder` and `peers` are also read from `gasDevConfig`, for the `gas` preset only. Any other key or preset value is an error.
+
+```json
+{
+  "gasDevConfig": {
+    "loadOrder": ["gas-sheet-db.types.ts", "gas-sheet-db.class.ts"],
+    "peers": { "gas-logger": "^1.2.0" }
+  }
+}
+```
+
+- `loadOrder` is the single source of truth for the order in which the global-scope files under `src/` load. Use it in tests with [`loadOrderFiles`](#load-order-from-packagejson).
+  - A non-empty array of unique, non-empty strings.
+  - Each entry is a relative POSIX path under `src/` (no leading `/`, no backslashes, no `.` or `..` segments) ending in `.ts` but not `.d.ts`.
+  - A listed file that does not exist is reported as drift: `gasDevConfig.loadOrder: src/<entry> does not exist`.
+- `peers` lists sibling libraries that are used when present, mapped to version ranges.
+  - An object whose keys are package names matching `/^[a-z0-9][a-z0-9._-]*$/`.
+  - Each value is a non-empty string; ranges are not parsed.
+- Either key with the `node` preset is an error.
 
 ### What is checked
 

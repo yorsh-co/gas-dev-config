@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from './support.js';
 
@@ -220,6 +220,7 @@ describe('check (preset specifics)', () => {
     const result = run(dir, ['check']);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('unknown "gasDevConfig" key(s): presets');
+    expect(result.stderr).toContain('(expected: preset, loadOrder, peers)');
   });
 
   it('fails when package.json is missing', () => {
@@ -228,6 +229,95 @@ describe('check (preset specifics)', () => {
     const result = run(dir, ['check']);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('package.json not found');
+  });
+});
+
+describe('check (loadOrder and peers)', () => {
+  /**
+   * @param {Record<string, unknown>} gasDevConfig
+   * @param {'gas' | 'node'} [preset]
+   * @param {string[]} [srcFiles] Files created under src/.
+   */
+  function make(gasDevConfig, preset = 'gas', srcFiles = ['a.ts', 'lib/b.ts']) {
+    const dir = createCleanProject(preset, { gasDevConfig });
+    for (const file of srcFiles) {
+      mkdirSync(dirname(join(dir, 'src', file)), { recursive: true });
+      writeFileSync(join(dir, 'src', file), '');
+    }
+    return dir;
+  }
+
+  it('passes with a valid loadOrder and peers', () => {
+    const dir = make({
+      loadOrder: ['a.ts', 'lib/b.ts'],
+      peers: { 'gas-logger': '^1.2.0', 'gas.sheet_db': '>=1 <3' },
+    });
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('✓ Config check passed\n');
+  });
+
+  it('reports a listed file that does not exist as drift', () => {
+    const dir = make({ loadOrder: ['a.ts', 'missing.ts'] });
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'package.json\n  gasDevConfig.loadOrder: src/missing.ts does not exist',
+    );
+    expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
+  });
+
+  it.each([
+    ['a non-array', 'a.ts', 'must be a non-empty array'],
+    ['an empty array', [], 'must be a non-empty array'],
+    ['a duplicate', ['a.ts', 'a.ts'], 'lists "a.ts" twice'],
+    ['a declaration file', ['a.d.ts'], 'entry "a.d.ts" must be a .ts file'],
+    ['a non-ts file', ['a.js'], 'entry "a.js" must be a .ts file'],
+    ['an absolute path', ['/etc/a.ts'], 'entry "/etc/a.ts" must be relative'],
+    ['a drive path', ['C:/a.ts'], 'entry "C:/a.ts" must be relative'],
+    ['a backslash', ['lib\\b.ts'], 'entry "lib\\\\b.ts" must use "/"'],
+    ['a parent segment', ['../a.ts'], 'entry "../a.ts" must not contain'],
+    ['a dot segment', ['./a.ts'], 'entry "./a.ts" must not contain'],
+    ['a non-string', ['a.ts', 1], 'entry 1 must be a non-empty string'],
+    ['an empty string', [''], 'entry "" must be a non-empty string'],
+  ])('rejects loadOrder with %s', (_name, loadOrder, message) => {
+    const result = run(make({ loadOrder }), ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('package.json: "gasDevConfig.loadOrder"');
+    expect(result.stderr).toContain(message);
+  });
+
+  it.each([
+    ['a non-object', ['gas-logger'], 'must be an object'],
+    ['an uppercase name', { Gas: '1' }, 'invalid package name "Gas"'],
+    ['a name with a slash', { 'a/b': '1' }, 'invalid package name "a/b"'],
+    [
+      'an empty range',
+      { 'gas-logger': '' },
+      '["gas-logger"] must be a non-empty',
+    ],
+    [
+      'a non-string range',
+      { 'gas-logger': 1 },
+      '["gas-logger"] must be a non-empty',
+    ],
+  ])('rejects peers with %s', (_name, peers, message) => {
+    const result = run(make({ peers }), ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('package.json: "gasDevConfig.peers"');
+    expect(result.stderr).toContain(message);
+  });
+
+  it.each([
+    ['loadOrder', ['a.ts']],
+    ['peers', { 'gas-logger': '^1.0.0' }],
+  ])('rejects %s with the node preset', (key, value) => {
+    const dir = make({ preset: 'node', [key]: value }, 'node');
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      `package.json: "gasDevConfig.${key}" requires the gas preset`,
+    );
   });
 });
 
