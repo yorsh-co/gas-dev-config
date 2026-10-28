@@ -2,6 +2,16 @@
 
 ---
 
+## [1.2.0] - 2026-10-28
+
+### Added
+
+- `gasDevConfig.loadOrder` (gas preset): source files under `src/` in load order, validated by `gas-dev-config check` (non-empty, unique, relative `.ts` paths that are not `.d.ts`); entries missing on disk are reported as drift
+- `gasDevConfig.peers` (gas preset): optional sibling libraries mapped to version ranges, validated by `gas-dev-config check`
+- `loadOrderFiles(root?)`, exported from `gas-dev-config/test`: returns the configured load order as `src/`-prefixed paths for `createGasLoader`
+
+---
+
 ## [1.1.0] - 2026-10-27
 
 ### Added
