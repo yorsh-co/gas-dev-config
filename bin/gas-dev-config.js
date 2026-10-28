@@ -3,26 +3,39 @@
 import { parseArgs } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
 import { CheckError, checkProject, formatReport } from './check.js';
+import { GasTestError, runBuild, runRun } from './gas-test.js';
 
 const OPTIONS = /** @type {const} */ ({
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean' },
+  out: { type: 'string' },
+  keep: { type: 'boolean' },
 });
 
 const USAGE = `Usage: gas-dev-config check
+       gas-dev-config gas-test build [--out <file>]
+       gas-dev-config gas-test run [--keep]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
 standard package.json scripts from the preset templates. Never writes.
 
 The preset is read from package.json: "gasDevConfig": { "preset": "gas" | "node" }
-(default: gas). "loadOrder" and "peers" are also validated.
+(default: gas). "loadOrder", "peers" and "gasTest" are also validated.
 
 Commands:
-  check          Compare the project in the current directory with the templates
+  check            Compare the project in the current directory with the templates
+  gas-test build   Build one self-contained script (peers, library, test runtime
+                   and gas-test/*.ts) to paste into the Apps Script editor
+  gas-test run     Push that script to the dedicated test project with clasp
+                   (replacing its whole contents), run it and print the results;
+                   needs GAS_TEST_SCRIPT_ID or "gasTest.scriptId"
 
 Options:
-  -h, --help     Show this help
-  --version      Show the version
+  -h, --help       Show this help
+  --version        Show the version
+  --out <file>     gas-test build: output file
+                   (default: node_modules/.cache/gas-dev-config/gas-test.js)
+  --keep           gas-test run: keep the temporary project directory
 `;
 
 /**
@@ -67,16 +80,27 @@ export function main(argv) {
   }
   const [command, ...rest] = positionals;
   if (command === undefined) return usageError('missing command.');
-  if (command !== 'check' || rest.length > 0) {
+  const isBuild = command === 'gas-test' && rest.join(' ') === 'build';
+  const isRun = command === 'gas-test' && rest.join(' ') === 'run';
+  const isCheck = command === 'check' && rest.length === 0;
+  if (!isCheck && !isBuild && !isRun) {
     return usageError(`unknown command: ${positionals.join(' ')}.`);
   }
+  if (values.out !== undefined && !isBuild) {
+    return usageError('--out is only valid with gas-test build.');
+  }
+  if (values.keep && !isRun) {
+    return usageError('--keep is only valid with gas-test run.');
+  }
   try {
+    if (isBuild) return runBuild(process.cwd(), { out: values.out });
+    if (isRun) return runRun(process.cwd(), { keep: values.keep === true });
     const { drift } = checkProject(process.cwd());
     const out = formatReport(drift).join('\n') + '\n';
     (drift.length === 0 ? process.stdout : process.stderr).write(out);
     return drift.length === 0 ? 0 : 1;
   } catch (error) {
-    if (error instanceof CheckError) {
+    if (error instanceof CheckError || error instanceof GasTestError) {
       process.stderr.write(`gas-dev-config: ${error.message}\n`);
       return 1;
     }

@@ -220,7 +220,9 @@ describe('check (preset specifics)', () => {
     const result = run(dir, ['check']);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('unknown "gasDevConfig" key(s): presets');
-    expect(result.stderr).toContain('(expected: preset, loadOrder, peers)');
+    expect(result.stderr).toContain(
+      '(expected: preset, loadOrder, peers, gasTest)',
+    );
   });
 
   it('fails when package.json is missing', () => {
@@ -321,6 +323,79 @@ describe('check (loadOrder and peers)', () => {
   });
 });
 
+describe('check (gasTest)', () => {
+  const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
+
+  /** @param {Record<string, unknown>} gasDevConfig */
+  function make(gasDevConfig) {
+    const dir = createCleanProject('gas', { gasDevConfig });
+    mkdirSync(join(dir, 'src'));
+    writeFileSync(join(dir, 'src', 'a.ts'), '');
+    return dir;
+  }
+
+  it('passes with valid scopes and an optional scriptId', () => {
+    const dir = make({
+      loadOrder: ['a.ts'],
+      gasTest: { scopes, scriptId: 'abc' },
+    });
+    expect(run(dir, ['check']).status).toBe(0);
+    const bare = make({ loadOrder: ['a.ts'], gasTest: { scopes } });
+    expect(run(bare, ['check']).status).toBe(0);
+  });
+
+  it.each([
+    ['a non-object', ['x'], 'must be an object'],
+    ['an unknown key', { scopes, nope: 1 }, '"gasDevConfig.gasTest.nope"'],
+    ['missing scopes', {}, '.scopes must be a non-empty array'],
+    ['empty scopes', { scopes: [] }, '.scopes must be a non-empty array'],
+    [
+      'a foreign scope',
+      { scopes: ['https://x.test/auth/y'] },
+      'must be a string starting with "https://www.googleapis.com/auth/"',
+    ],
+    ['a non-string scope', { scopes: [1] }, 'entry 1 must be a string'],
+    [
+      'a duplicate scope',
+      { scopes: [...scopes, ...scopes] },
+      'lists "https://www.googleapis.com/auth/spreadsheets" twice',
+    ],
+    [
+      'an empty scriptId',
+      { scopes, scriptId: ' ' },
+      '.scriptId must be a non-empty string',
+    ],
+    [
+      'a non-string scriptId',
+      { scopes, scriptId: 1 },
+      '.scriptId must be a non-empty string',
+    ],
+  ])('rejects gasTest with %s', (_name, gasTest, message) => {
+    const result = run(make({ loadOrder: ['a.ts'], gasTest }), ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(message);
+  });
+
+  it('requires loadOrder', () => {
+    const result = run(make({ gasTest: { scopes } }), ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      '"gasDevConfig.gasTest" requires "gasDevConfig.loadOrder"',
+    );
+  });
+
+  it('rejects gasTest with the node preset', () => {
+    const dir = createCleanProject('node', {
+      gasDevConfig: { preset: 'node', gasTest: { scopes } },
+    });
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      '"gasDevConfig.gasTest" requires the gas preset',
+    );
+  });
+});
+
 describe('CLI usage', () => {
   it('exits 2 without a command', () => {
     const result = run(REPO_ROOT, []);
@@ -344,6 +419,7 @@ describe('CLI usage', () => {
     const result = run(REPO_ROOT, ['--help']);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Usage: gas-dev-config check');
+    expect(result.stdout).toContain('gas-dev-config gas-test run [--keep]');
   });
 
   it('prints the version', () => {
