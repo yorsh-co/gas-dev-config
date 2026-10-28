@@ -1,4 +1,4 @@
-import { createGasLoader } from 'gas-dev-config/test';
+import { createGasLoader, loadOrderFiles } from 'gas-dev-config/test';
 
 interface Greeter {
   greet(name: string): string;
@@ -19,4 +19,6 @@ const message: string = new Greeter().greet('a');
 const untyped = createGasLoader({ files: ['a.ts'], exports: ['A'] })();
 const value: unknown = untyped.A;
 
-export { message, value };
+const ordered: string[] = loadOrderFiles('.');
+
+export { message, ordered, value };

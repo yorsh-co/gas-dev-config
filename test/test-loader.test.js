@@ -1,9 +1,17 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createGasLoader } from '../test-loader/index.js';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { createGasLoader, loadOrderFiles } from '../test-loader/index.js';
 import { REPO_ROOT, createProject } from './support.js';
 
 const ROOT = join(import.meta.dirname, 'fixtures', 'test-loader');
@@ -136,6 +144,99 @@ describe('createGasLoader', () => {
     const create = () => createGasLoader(/** @type {any} */ (options));
     expect(create).toThrow(TypeError);
     expect(create).toThrow(message);
+  });
+});
+
+describe('loadOrderFiles', () => {
+  /** @type {string[]} */
+  const dirs = [];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    for (const dir of dirs.splice(0))
+      rmSync(dir, { recursive: true, force: true });
+  });
+
+  /**
+   * @param {string | undefined} packageJson Raw package.json text, or undefined for none.
+   * @returns {string} Project directory.
+   */
+  function createDir(packageJson) {
+    const dir = mkdtempSync(join(tmpdir(), 'gas-loader-order-'));
+    dirs.push(dir);
+    if (packageJson !== undefined) {
+      writeFileSync(join(dir, 'package.json'), packageJson);
+    }
+    return dir;
+  }
+
+  /** @param {unknown} loadOrder */
+  const withOrder = (loadOrder) =>
+    JSON.stringify({ gasDevConfig: { loadOrder } });
+
+  it('returns the load order prefixed with src/', () => {
+    const dir = createDir(withOrder(['b.types.ts', 'lib/a.ts']));
+    expect(loadOrderFiles(dir)).toEqual(['src/b.types.ts', 'src/lib/a.ts']);
+  });
+
+  it('defaults to process.cwd()', () => {
+    const dir = createDir(withOrder(['a.ts']));
+    vi.spyOn(process, 'cwd').mockReturnValue(dir);
+    expect(loadOrderFiles()).toEqual(['src/a.ts']);
+  });
+
+  it('names the path of a missing package.json and keeps the cause', () => {
+    const dir = createDir(undefined);
+    const error = /** @type {Error} */ (
+      (() => {
+        try {
+          loadOrderFiles(dir);
+        } catch (e) {
+          return e;
+        }
+      })()
+    );
+    expect(error.message).toBe(
+      `loadOrderFiles: cannot read ${join(dir, 'package.json')}`,
+    );
+    expect(error.cause).toBeInstanceOf(Error);
+  });
+
+  it('names the path of an invalid package.json', () => {
+    const dir = createDir('{');
+    expect(() => loadOrderFiles(dir)).toThrow(
+      `loadOrderFiles: cannot read ${join(dir, 'package.json')}`,
+    );
+  });
+
+  it.each([
+    ['gasDevConfig is missing', '{}'],
+    ['loadOrder is missing', '{"gasDevConfig":{}}'],
+    ['loadOrder is not an array', withOrder('a.ts')],
+    ['loadOrder is empty', withOrder([])],
+    ['loadOrder has a non-string', withOrder(['a.ts', 1])],
+    ['loadOrder has an empty string', withOrder([''])],
+  ])('throws when %s', (_name, packageJson) => {
+    const dir = createDir(packageJson);
+    expect(() => loadOrderFiles(dir)).toThrow(
+      'loadOrderFiles: "gasDevConfig.loadOrder" in',
+    );
+    expect(() => loadOrderFiles(dir)).toThrow(
+      'must be a non-empty array of non-empty strings',
+    );
+  });
+
+  it('feeds createGasLoader', () => {
+    const dir = createDir(withOrder(['a.types.ts', 'b.ts']));
+    mkdirSync(join(dir, 'src'));
+    writeFileSync(join(dir, 'src', 'a.types.ts'), 'const BASE: number = 2;');
+    writeFileSync(join(dir, 'src', 'b.ts'), 'const DOUBLE: number = BASE * 2;');
+    const load = createGasLoader({
+      files: loadOrderFiles(dir),
+      exports: ['DOUBLE'],
+      root: dir,
+    });
+    expect(load()).toEqual({ DOUBLE: 4 });
   });
 });
 
