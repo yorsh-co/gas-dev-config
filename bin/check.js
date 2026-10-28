@@ -3,7 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PRESETS = ['gas', 'node'];
-const KNOWN_KEYS = ['preset', 'loadOrder', 'peers'];
+const KNOWN_KEYS = ['preset', 'loadOrder', 'peers', 'gasTest'];
+const GAS_TEST_KEYS = ['scopes', 'scriptId'];
+const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
 const PEER_NAME = /^[a-z0-9][a-z0-9._-]*$/;
 const TEMPLATES = new URL('../templates/', import.meta.url);
 
@@ -23,10 +25,17 @@ const SELF_BIN = 'node bin/gas-dev-config.js';
  */
 
 /**
+ * @typedef {object} GasTestConfig
+ * @property {string[]} scopes OAuth scopes the Apps Script test project requests.
+ * @property {string} [scriptId] Apps Script project the tests run in.
+ */
+
+/**
  * @typedef {object} ResolvedConfig
  * @property {string} preset Preset name; `gas` when unset.
  * @property {string[] | undefined} loadOrder Source files under `src/` in load order.
  * @property {Record<string, string> | undefined} peers Optional sibling libraries and their version ranges.
+ * @property {GasTestConfig | undefined} gasTest Settings for tests that run in Apps Script.
  */
 
 /** Raised for a configuration problem that prevents the check from running. */
@@ -147,6 +156,55 @@ function parsePeers(value) {
 }
 
 /**
+ * Validates `gasDevConfig.gasTest`: the OAuth scopes of the test project and
+ * an optional script ID.
+ *
+ * @param {unknown} value
+ * @returns {GasTestConfig}
+ */
+function parseGasTest(value) {
+  const key = 'package.json: "gasDevConfig.gasTest"';
+  if (!isRecord(value)) throw new CheckError(`${key} must be an object`);
+  const unknown = Object.keys(value).filter((k) => !GAS_TEST_KEYS.includes(k));
+  if (unknown.length > 0) {
+    throw new CheckError(
+      `package.json: unknown key(s): ${unknown.map((k) => `"gasDevConfig.gasTest.${k}"`).join(', ')} (expected: ${GAS_TEST_KEYS.join(', ')})`,
+    );
+  }
+  const { scopes, scriptId } = value;
+  if (!Array.isArray(scopes) || scopes.length === 0) {
+    throw new CheckError(`${key}.scopes must be a non-empty array of strings`);
+  }
+  /** @type {Set<string>} */
+  const seen = new Set();
+  for (const scope of scopes) {
+    if (typeof scope !== 'string' || !scope.startsWith(SCOPE_PREFIX)) {
+      throw new CheckError(
+        `${key}.scopes entry ${JSON.stringify(scope)} must be a string starting with "${SCOPE_PREFIX}"`,
+      );
+    }
+    if (seen.has(scope)) {
+      throw new CheckError(
+        `${key}.scopes lists ${JSON.stringify(scope)} twice`,
+      );
+    }
+    seen.add(scope);
+  }
+  if (
+    scriptId !== undefined &&
+    (typeof scriptId !== 'string' || scriptId.trim() === '')
+  ) {
+    throw new CheckError(`${key}.scriptId must be a non-empty string`);
+  }
+  return {
+    scopes: /** @type {string[]} */ (scopes),
+    ...(scriptId !== undefined && {
+      scriptId: /** @type {string} */ (scriptId),
+    }),
+  };
+}
+
+/**
  * Resolves and validates the `gasDevConfig` field of package.json.
  *
  * @param {Record<string, unknown>} pkg
@@ -169,12 +227,17 @@ function resolveConfig(pkg) {
       `package.json: unknown preset ${JSON.stringify(preset)} (expected: ${PRESETS.join(', ')})`,
     );
   }
-  for (const key of ['loadOrder', 'peers']) {
+  for (const key of ['loadOrder', 'peers', 'gasTest']) {
     if (config[key] !== undefined && preset !== 'gas') {
       throw new CheckError(
         `package.json: "gasDevConfig.${key}" requires the gas preset`,
       );
     }
+  }
+  if (config['gasTest'] !== undefined && config['loadOrder'] === undefined) {
+    throw new CheckError(
+      'package.json: "gasDevConfig.gasTest" requires "gasDevConfig.loadOrder"',
+    );
   }
   return {
     preset,
@@ -184,6 +247,10 @@ function resolveConfig(pkg) {
         : parseLoadOrder(config['loadOrder']),
     peers:
       config['peers'] === undefined ? undefined : parsePeers(config['peers']),
+    gasTest:
+      config['gasTest'] === undefined
+        ? undefined
+        : parseGasTest(config['gasTest']),
   };
 }
 
@@ -310,6 +377,30 @@ function checkLoadOrder(cwd, loadOrder) {
 }
 
 /**
+ * Reads package.json from a project.
+ *
+ * @param {string} cwd Project root.
+ * @returns {Record<string, unknown>}
+ * @throws {CheckError} When package.json is missing, invalid or not an object.
+ */
+function readPackage(cwd) {
+  const pkg = readJson(join(cwd, 'package.json'), 'package.json');
+  if (!isRecord(pkg)) throw new CheckError('package.json must be an object');
+  return pkg;
+}
+
+/**
+ * Reads and validates the `gasDevConfig` field of a project's package.json.
+ *
+ * @param {string} cwd Project root.
+ * @returns {ResolvedConfig}
+ * @throws {CheckError} When package.json or the `gasDevConfig` field is unusable or invalid.
+ */
+export function loadConfig(cwd) {
+  return resolveConfig(readPackage(cwd));
+}
+
+/**
  * Compares a project's non-extendable configuration with the preset templates
  * and validates its `gasDevConfig.loadOrder` files. Never writes.
  *
@@ -318,8 +409,7 @@ function checkLoadOrder(cwd, loadOrder) {
  * @throws {CheckError} When package.json or the `gasDevConfig` field is unusable or invalid.
  */
 export function checkProject(cwd) {
-  const pkg = readJson(join(cwd, 'package.json'), 'package.json');
-  if (!isRecord(pkg)) throw new CheckError('package.json must be an object');
+  const pkg = readPackage(cwd);
   const { preset, loadOrder } = resolveConfig(pkg);
   const drift = [
     ...checkIgnoreFile(cwd, preset, '.gitignore'),

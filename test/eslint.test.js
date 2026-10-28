@@ -103,6 +103,24 @@ describe('gasEslint() default preset', () => {
     expect(script.sourceType).toBe('module');
   });
 
+  it('lints gas-test as a GAS script with the runtime globals, not as a Node test', async () => {
+    const config = await linter.calculateConfigForFile(
+      join(project.dir, 'gas-test/lib.ts'),
+    );
+    expect(config?.languageOptions?.sourceType).toBe('script');
+    expect(config?.languageOptions?.parserOptions?.['project']).toBe(
+      './gas-test/tsconfig.json',
+    );
+    expect(config?.languageOptions?.globals).toMatchObject({
+      test: 'readonly',
+      info: 'readonly',
+      assert: 'readonly',
+      runGasTests: 'readonly',
+    });
+    expect(config?.languageOptions?.globals).not.toHaveProperty('process');
+    expect(config?.rules?.['@typescript-eslint/no-unused-vars']?.[0]).toBe(0);
+  });
+
   it('exposes Node globals to tests and not to src', async () => {
     const test = await linter.calculateConfigForFile(
       join(project.dir, 'test/lib.ts'),
@@ -127,9 +145,10 @@ describe('gasEslint() default preset', () => {
   });
 
   it('reports no errors on the clean fixture', async () => {
-    const results = lint(project.dir, 'src', 'test', 'scripts');
+    const results = lint(project.dir, 'src', 'test', 'gas-test', 'scripts');
     expect(Object.values(results).flat()).toEqual([]);
     expect(Object.keys(results).sort()).toEqual([
+      'gas-test/lib.ts',
       'scripts/x.js',
       'src/lib.ts',
       'test/lib.ts',
@@ -139,8 +158,14 @@ describe('gasEslint() default preset', () => {
   it('reports seeded violations', async () => {
     writeFileSync(join(project.dir, 'src/bad.ts'), 'debugger;\n');
     writeFileSync(join(project.dir, 'test/bad.ts'), 'debugger;\n');
+    writeFileSync(join(project.dir, 'gas-test/bad.ts'), 'debugger;\n');
     writeFileSync(join(project.dir, 'scripts/bad.js'), 'debugger;\n');
-    const files = ['src/bad.ts', 'test/bad.ts', 'scripts/bad.js'];
+    const files = [
+      'src/bad.ts',
+      'test/bad.ts',
+      'gas-test/bad.ts',
+      'scripts/bad.js',
+    ];
     const results = lint(project.dir, ...files);
     for (const file of files) {
       expect(results[file]).toEqual(['no-debugger']);
@@ -151,6 +176,21 @@ describe('gasEslint() default preset', () => {
     expect(hasTestBlock(gasEslint({ cwd: project.dir }))).toBe(true);
     rmSync(join(project.dir, 'tsconfig.test.json'));
     expect(hasTestBlock(gasEslint({ cwd: project.dir }))).toBe(false);
+  });
+
+  it('includes the gas-test block only when gas-test/tsconfig.json exists', () => {
+    const hasBlock = (/** @type {string} */ cwd) =>
+      gasEslint({ cwd }).some(
+        (c) => c.files?.toString() === 'gas-test/**/*.ts',
+      );
+    expect(hasBlock(project.dir)).toBe(true);
+    const bare = createProject('eslint/gas');
+    try {
+      rmSync(join(bare.dir, 'gas-test/tsconfig.json'));
+      expect(hasBlock(bare.dir)).toBe(false);
+    } finally {
+      bare.cleanup();
+    }
   });
 
   it('appends extra configs before Prettier and honors ignores', () => {
