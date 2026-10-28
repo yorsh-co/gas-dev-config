@@ -2,6 +2,20 @@
 
 ---
 
+## [1.3.0] - 2026-10-28
+
+### Added
+
+- `gasDevConfig.gasTest` (gas preset, requires `loadOrder`): OAuth `scopes` and an optional `scriptId` for Apps Script tests, validated by `gas-dev-config check`
+- Apps Script test runtime, `gas-dev-config/gas-test/runtime.js`: `test`, `info`, `assert` and the `runGasTests(spreadsheetId?)` entry point, with a lazily resolved spreadsheet (argument, `GAS_TEST_SPREADSHEET_ID` script property or active spreadsheet), a per-run sheet prefix, cleanup of its own and stale test sheets, execution-log output and base64-encoded results
+- `tsconfig/gas-test.json` for type-checking `gas-test/*.ts` against `src/` and the runtime types
+- ESLint `gas` preset: lints `gas-test/**/*.ts` as Apps Script global scripts when `gas-test/tsconfig.json` exists
+- `gas-dev-config gas-test build [--out <file>]`: one self-contained script of the peers (fetched by `gas-dev-bundle`), the library in load order, the runtime and the tests, for pasting into the Apps Script editor
+- `gas-dev-config gas-test run [--keep]`: pushes the build to a dedicated Apps Script project with clasp, runs `runGasTests` and reports each result; exits 1 on any failure
+- `gas-dev-bundle` dependency; `@google/clasp` as an optional peer dependency
+
+---
+
 ## [1.2.0] - 2026-10-28
 
 ### Added

@@ -16,6 +16,7 @@
 - `gas-dev-config check` reports drift of the files that cannot be extended: `.gitignore`, `.prettierignore`, `.github/dependabot.yml` and the standard `package.json` scripts
 - The check is read-only: it never writes to your project
 - `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
+- `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - Plain ESM JavaScript, no build step
 
 ## Requirements
@@ -25,6 +26,7 @@
   - `eslint` `^10.7.0`
   - `prettier` `^3.9.6`
   - `typescript` `^5.9.3`
+  - `@google/clasp` `^3.4.1`, optional: only for `gas-dev-config gas-test run`
 - `@types/google-apps-script`, and `@types/node` for projects with tests, as your own dev dependencies
 
 > [!IMPORTANT]
@@ -67,12 +69,13 @@ Delete `.prettierrc.json`. A `prettier` key in `package.json` takes precedence o
 
 Extend one of the presets from `gas-dev-config/tsconfig/`:
 
-| Preset      | Use for                       | Sets                                                                                                                                                                                                                                                                                             |
-| ----------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `gas.json`  | Apps Script backend sources   | `target` and `lib` `ES2021`, `types` `["google-apps-script"]`, `declaration`, `noEmitOnError`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `isolatedModules`, `noUncheckedSideEffectImports`, `skipLibCheck`, `forceConsistentCasingInFileNames` |
-| `web.json`  | Browser client sources        | Extends `gas.json`; `lib` `ES2021`, `DOM`, `DOM.Iterable`; `types` `[]` (no GAS types)                                                                                                                                                                                                           |
-| `test.json` | Vitest suites                 | Extends `gas.json`; `module` `ESNext`, `moduleResolution` `bundler`, `noEmit`, `declaration` off, `types` `["node", "google-apps-script"]`                                                                                                                                                       |
-| `node.json` | Plain JavaScript Node tooling | `target` `ES2022`, `module` and `moduleResolution` `nodenext`, `types` `["node"]`, `allowJs`, `checkJs`, `noEmit`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `skipLibCheck`                                                                                            |
+| Preset          | Use for                         | Sets                                                                                                                                                                                                                                                                                             |
+| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gas.json`      | Apps Script backend sources     | `target` and `lib` `ES2021`, `types` `["google-apps-script"]`, `declaration`, `noEmitOnError`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `isolatedModules`, `noUncheckedSideEffectImports`, `skipLibCheck`, `forceConsistentCasingInFileNames` |
+| `web.json`      | Browser client sources          | Extends `gas.json`; `lib` `ES2021`, `DOM`, `DOM.Iterable`; `types` `[]` (no GAS types)                                                                                                                                                                                                           |
+| `test.json`     | Vitest suites                   | Extends `gas.json`; `module` `ESNext`, `moduleResolution` `bundler`, `noEmit`, `declaration` off, `types` `["node", "google-apps-script"]`                                                                                                                                                       |
+| `gas-test.json` | Apps Script tests (`gas-test/`) | Extends `gas.json`; `noEmit`, `declaration` off, `types` `["google-apps-script", "gas-dev-config/gas-test/runtime"]`                                                                                                                                                                             |
+| `node.json`     | Plain JavaScript Node tooling   | `target` `ES2022`, `module` and `moduleResolution` `nodenext`, `types` `["node"]`, `allowJs`, `checkJs`, `noEmit`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `skipLibCheck`                                                                                            |
 
 Path options (`rootDir`, `outDir`, `include`, `exclude`) stay in your own files: TypeScript resolves them relative to the file that declares them, so they cannot live in the shared preset.
 
@@ -145,7 +148,7 @@ All options are optional. Unknown options and invalid values throw a `TypeError`
 | `web`          | none                | Browser sources, linted apart from the GAS files: `{ files, tsconfig }`. Not supported by `node` |
 | `web.files`    | required with `web` | Non-empty array of globs of browser (DOM) sources                                                |
 | `web.tsconfig` | required with `web` | tsconfig used for type-aware linting of those files                                              |
-| `cwd`          | `process.cwd()`     | Project root, used to detect `tsconfig.test.json`                                                |
+| `cwd`          | `process.cwd()`     | Project root, used to detect `tsconfig.test.json` and `gas-test/tsconfig.json`                   |
 
 Any further arguments are flat configs applied after the preset and before Prettier, for one-off rules.
 
@@ -155,6 +158,7 @@ Any further arguments are flat configs applied after the preset and before Prett
 - `src/**/*.ts` as Apps Script files: `sourceType: 'script'` (the files share one global scope), type-aware linting with `./tsconfig.json`, unused-variable rules off
 - With `web`: `web.files` are excluded from the Apps Script block and linted as browser scripts (browser globals, `web.tsconfig`, unused-variable rules off)
 - `test/**/*.ts` as Node ES modules with `./tsconfig.test.json`, only when `tsconfig.test.json` exists in `cwd`
+- `gas-test/**/*.ts` as Apps Script files (`sourceType: 'script'`, the `test`, `info`, `assert` and `runGasTests` globals, type-aware linting with `./gas-test/tsconfig.json`, unused-variable rules off), only when `gas-test/tsconfig.json` exists in `cwd`; they are not Node test modules
 - `scripts/**/*.js` as Node ES modules
 - `dist/`, `.worktrees/` and `peer/` ignored; `peer/` holds ambient declarations that are outside the tsconfig `include`
 - `eslint-config-prettier` last, so formatting rules never conflict with Prettier
@@ -289,6 +293,116 @@ export function loadGasLogger(globals: Record<string, unknown> = {}) {
 
 The types ship as `test-loader/types.d.ts`, so consumers with `moduleResolution: bundler` (such as `gas-dev-config/tsconfig/test.json`) need no `allowJs`.
 
+## Apps Script tests
+
+Unit tests with fakes cannot show how Sheets, `LockService` or `PropertiesService` really behave. `gas-dev-config gas-test` builds one self-contained script from the library's optional peers, the library, a small test runtime and your tests, so it can run in Apps Script.
+
+### Layout
+
+```
+src/                      library, in gasDevConfig.loadOrder
+gas-test/
+  tsconfig.json
+  sheets.ts               tests: global-scope TypeScript, no import/export
+```
+
+`gas-test/*.ts` (declaration files excluded) are transpiled in name order after the runtime. `gas-test/tsconfig.json` type-checks them against `src/` and the runtime's types:
+
+```json
+{
+  "extends": "gas-dev-config/tsconfig/gas-test.json",
+  "include": ["../src/**/*.ts", "*.ts"]
+}
+```
+
+The runtime's global declarations (`test`, `info`, `assert`, `runGasTests`, `GasTestContext`) come in through the preset's `types` entry `gas-dev-config/gas-test/runtime`, which TypeScript resolves from `node_modules`; no `/// <reference>` is needed. Add the check to `typecheck`, for example `tsc --noEmit && tsc -p gas-test/tsconfig.json --noEmit`. The `gas` ESLint preset lints `gas-test/` once `gas-test/tsconfig.json` exists.
+
+### Configuration
+
+`gasDevConfig.gasTest` requires `loadOrder`:
+
+```json
+{
+  "gasDevConfig": {
+    "loadOrder": ["gas-lock.types.ts", "gas-lock.class.ts"],
+    "gasTest": {
+      "scopes": ["https://www.googleapis.com/auth/spreadsheets"],
+      "scriptId": "1AbC..."
+    }
+  }
+}
+```
+
+- `scopes` is required: a non-empty array of unique strings, each starting with `https://www.googleapis.com/auth/`. They become the project's `oauthScopes`.
+- `scriptId` is optional; the `GAS_TEST_SCRIPT_ID` environment variable overrides it.
+- Unknown keys are rejected, naming their path.
+
+### Writing tests
+
+```ts
+// gas-test/sheets.ts
+test('writes a row', ({ prefix, spreadsheet }) => {
+  const sheet = spreadsheet.insertSheet(`${prefix}rows`);
+  sheet.appendRow(['a', 1]);
+  assert(sheet.getLastRow() === 1, 'expected one row');
+});
+
+info('locale', ({ spreadsheet }) => spreadsheet.getSpreadsheetLocale());
+```
+
+| Global                       | Description                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `test(name, fn)`             | Registers a test; it fails when `fn` throws                                                                        |
+| `info(name, fn)`             | Records context-dependent behaviour: the returned string (or thrown message) is reported as `INFO` and never fails |
+| `assert(condition, message)` | Throws `Error(message)` when the condition is falsy                                                                |
+| `runGasTests(spreadsheetId)` | Entry point: runs the tests in registration order                                                                  |
+
+Each `fn` receives `{ prefix, spreadsheet }`. `prefix` is `__gt_<epochMs>_`; name every sheet a test creates with it. `spreadsheet` is resolved on first access, so tests that never read it (for example for `gas-lock`) need no spreadsheet. Resolution order:
+
+1. the `spreadsheetId` argument of `runGasTests` (with `clasp run`, the `GAS_TEST_SPREADSHEET_ID` environment variable)
+2. the `GAS_TEST_SPREADSHEET_ID` script property; this needs the `https://www.googleapis.com/auth/script.storage` scope in `gasTest.scopes`
+3. `SpreadsheetApp.getActiveSpreadsheet()`
+
+If none applies, the test that reads `spreadsheet` fails with an error naming all three. On first access, sheets named `__gt_<epochMs>_...` older than one hour (left by a run killed by the execution limit) are deleted; after the run, every sheet with the run's prefix is deleted. A cleanup error is reported as `INFO`.
+
+The runtime logs `PASS`, `FAIL` and `INFO` lines and a summary (`<p> passed, <f> failed, <i> info in <s> s`) to the execution log, and returns the results as `@@GAS_TEST@@<base64 JSON>@@END@@`.
+
+### Commands
+
+Suggested library scripts:
+
+```json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc -p gas-test/tsconfig.json --noEmit && echo '✓ TypeScript passed'",
+    "test:gas:build": "gas-dev-config gas-test build",
+    "test:gas": "gas-dev-config gas-test run"
+  }
+}
+```
+
+- `gas-dev-config gas-test build [--out <file>]` transpiles (without type-checking) the `loadOrder` files and `gas-test/*.ts`, bundles the `peers` with [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle) and writes the script to `--out`, by default `node_modules/.cache/gas-dev-config/gas-test.js`. The first line is a unique build stamp, because `clasp push --force` skips the push when every local file matches the remote.
+- `gas-dev-config gas-test run [--keep]` builds, pushes the script to the test project with clasp, runs `runGasTests` and prints one line per result and the summary. It exits `1` when a test fails or no results come back. With `--keep`, the temporary project directory is kept and its path printed. `GAS_TEST_SPREADSHEET_ID` is passed to `runGasTests`.
+
+> [!WARNING]
+> The test project must be dedicated to this purpose: `run` replaces its whole contents, including `appsscript.json`.
+
+### One-off setup
+
+1. Create a dedicated Apps Script project and link it to a standard Google Cloud project (project settings), which `clasp run` requires.
+2. Install clasp: `npm install -D @google/clasp`.
+3. Authorize the scopes: `clasp login --extra-scopes <comma-separated gasTest.scopes>`.
+4. Set `GAS_TEST_SCRIPT_ID` (or `gasTest.scriptId`) and, optionally, `GAS_TEST_SPREADSHEET_ID`.
+
+### Running from the editor
+
+Run `npm run test:gas:build`, paste the generated file into the Apps Script editor, select `runGasTests` and run it. The execution log shows the results.
+
+### Limits
+
+- Apps Script stops an execution after 6 minutes; the run's sheets are then removed by the next run's stale-sheet sweep.
+- Runs share the project's script properties and spreadsheet, so do not run two at once.
+
 ## Config check
 
 Prettier, TypeScript and ESLint are shared through their own extension mechanisms. Four things have none, so `gas-dev-config check` compares them with templates and reports the drift:
@@ -318,7 +432,7 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 }
 ```
 
-`loadOrder` and `peers` are also read from `gasDevConfig`, for the `gas` preset only. Any other key or preset value is an error.
+`loadOrder`, `peers` and `gasTest` are also read from `gasDevConfig`, for the `gas` preset only. Any other key or preset value is an error.
 
 ```json
 {
@@ -336,7 +450,11 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 - `peers` lists sibling libraries that are used when present, mapped to version ranges.
   - An object whose keys are package names matching `/^[a-z0-9][a-z0-9._-]*$/`.
   - Each value is a non-empty string; ranges are not parsed.
-- Either key with the `node` preset is an error.
+- `gasTest` configures [Apps Script tests](#apps-script-tests).
+  - An object with the keys `scopes` and `scriptId`; any other key is an error naming its path.
+  - `scopes` is a non-empty array of unique strings starting with `https://www.googleapis.com/auth/`; `scriptId` is an optional non-empty string.
+  - It requires `loadOrder`.
+- Any of these keys with the `node` preset is an error.
 
 ### What is checked
 

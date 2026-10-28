@@ -19,13 +19,21 @@ import tseslint from 'typescript-eslint';
  *   TypeScript projects; `node` lints plain JavaScript Node tooling.
  * @property {string[]} [ignores] Extra ignore globs, added to the preset's.
  * @property {WebOptions} [web] Browser sources, linted apart from GAS files (`gas` preset only).
- * @property {string} [cwd] Project root used to detect `tsconfig.test.json`; defaults to `process.cwd()`.
+ * @property {string} [cwd] Project root used to detect `tsconfig.test.json` and `gas-test/tsconfig.json`; defaults to `process.cwd()`.
  */
 
 /** @typedef {import('eslint').Linter.Config} FlatConfig */
 
 const KNOWN_OPTIONS = ['preset', 'ignores', 'web', 'cwd'];
 const PRESETS = ['gas', 'node'];
+
+/** Globals defined by `gas-dev-config/gas-test`'s runtime. */
+const GAS_TEST_GLOBALS = /** @type {const} */ ({
+  test: 'readonly',
+  info: 'readonly',
+  assert: 'readonly',
+  runGasTests: 'readonly',
+});
 
 /**
  * @param {unknown} value
@@ -130,6 +138,7 @@ export function gasEslint(options = {}, ...extra) {
     '@typescript-eslint/no-unused-vars': 'off',
   });
   const hasTestConfig = existsSync(resolve(cwd, 'tsconfig.test.json'));
+  const hasGasTestConfig = existsSync(resolve(cwd, 'gas-test/tsconfig.json'));
 
   return defineConfig(
     // peer/ holds ambient declarations for consumers to copy; it is outside
@@ -175,6 +184,21 @@ export function gasEslint(options = {}, ...extra) {
               globals: globals.node,
               parserOptions: { project: './tsconfig.test.json' },
             },
+          },
+        ]
+      : []),
+
+    // Apps Script tests — global scripts like src/, plus the test runtime globals.
+    ...(hasGasTestConfig
+      ? [
+          {
+            files: ['gas-test/**/*.ts'],
+            languageOptions: {
+              sourceType: /** @type {const} */ ('script'),
+              globals: GAS_TEST_GLOBALS,
+              parserOptions: { project: './gas-test/tsconfig.json' },
+            },
+            rules: unusedVarsOff,
           },
         ]
       : []),

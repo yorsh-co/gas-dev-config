@@ -114,6 +114,40 @@ describe('tsconfig/gas.json', () => {
   });
 });
 
+describe('tsconfig/gas-test.json', () => {
+  /** @type {ReturnType<typeof createProject>} */
+  let project;
+
+  beforeAll(() => {
+    project = createProject('tsconfig/gas-test');
+  });
+
+  afterAll(() => project.cleanup());
+
+  /**
+   * @param {string} config tsconfig file name inside the fixture's gas-test directory.
+   * @returns {{ status: number | null, output: string }}
+   */
+  function tsc(config) {
+    const result = spawnSync(
+      TSC,
+      ['-p', join(project.dir, 'gas-test', config)],
+      { encoding: 'utf8' },
+    );
+    return { status: result.status, output: result.stdout + result.stderr };
+  }
+
+  it('type-checks tests against src and the runtime types', () => {
+    expect(tsc('tsconfig.json')).toEqual({ status: 0, output: '' });
+  });
+
+  it('rejects a test that misuses the runtime types', () => {
+    const { status, output } = tsc('tsconfig.bad.json');
+    expect(status).not.toBe(0);
+    expect(output).toMatch(/not assignable/);
+  });
+});
+
 describe('package exports', () => {
   it('ships every config referenced by the exports map', () => {
     const pkg = JSON.parse(
@@ -124,7 +158,8 @@ describe('package exports', () => {
       './tsconfig/*': './tsconfig/*',
     });
     expect(pkg.files).toEqual(
-      expect.arrayContaining(['prettier.json', 'tsconfig']),
+      expect.arrayContaining(['prettier.json', 'tsconfig', 'gas-test']),
     );
+    expect(pkg.exports['./gas-test/runtime.js']).toBe('./gas-test/runtime.js');
   });
 });

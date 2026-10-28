@@ -1,0 +1,8 @@
+{
+  "extends": "./gas.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "types": ["google-apps-script", "gas-dev-config/gas-test/runtime"]
+  }
+}
