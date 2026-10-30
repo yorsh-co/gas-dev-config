@@ -19,6 +19,36 @@
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - Plain ESM JavaScript, no build step
 
+<a id="gas-dev-tools"></a>
+
+## The gas-dev-\* tools
+
+Three development tools support the gas-\* libraries. None of them is ever pushed to Apps Script.
+
+| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`); the Vitest loader; Apps Script tests (`gas-test build`/`run`) |
+| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                               |
+| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                    |
+
+Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead).
+
+The tools are connected by one piece of metadata, declared once in the library:
+
+```text
+library package.json            dist/vX.Y.Z package.json          consumer project
+"gasDevConfig": {               "gasLibrary": {                   src/lib/gas-libraries.js
+  "loadOrder": [...],  ──────►    "loadOrder": [...],   ──────►   (libraries and their files
+  "peers": {...}                  "peers": {...}                   in load order)
+}                               }
+validated by                    written by                        written by
+gas-dev-config check            gas-dev-release                   gas-dev-bundle
+```
+
+The only code dependency between them: `gas-dev-config gas-test build` uses `gas-dev-bundle` to bundle a library's peers ahead of the library under test.
+
+A library release therefore runs: `npm run check` (presets, tests and `gas-dev-config check`), `npm run test:gas` on the release branch (Apps Script tests, manual), then `npm run build:release` (build, then `gas-dev-release`).
+
 ## Requirements
 
 - Node.js >= 20.10
