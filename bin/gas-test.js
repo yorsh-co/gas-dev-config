@@ -67,7 +67,8 @@ function transpileAll(paths, dir) {
       throw new GasTestError(`cannot read ${path}`, { cause });
     }
     const { outputText, diagnostics = [] } = ts.transpileModule(source, {
-      compilerOptions: { target: ts.ScriptTarget.ES2021 },
+      // Matches tsconfig/gas.json: Apps Script rejects ES2021 syntax at push.
+      compilerOptions: { target: ts.ScriptTarget.ES2020 },
       fileName: path,
       reportDiagnostics: true,
     });

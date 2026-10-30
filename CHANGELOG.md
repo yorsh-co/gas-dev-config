@@ -2,6 +2,14 @@
 
 ---
 
+## [1.4.1] - 2026-10-30
+
+### Fixed
+
+- `tsconfig/gas.json` targets ES2020 instead of ES2021, and `gas-test build` transpiles to ES2020: Apps Script's push-time parser rejects ES2021 syntax (`||=`, `&&=`, `??=`, numeric separators), so builds containing it could not be pushed. `lib` stays ES2021
+
+---
+
 ## [1.4.0] - 2026-10-30
 
 ### Changed
