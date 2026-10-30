@@ -8,10 +8,11 @@ const TSC = join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
 
 /**
  * Effective compilerOptions of gas-error 1.1.0's tsconfig.json
- * (`tsc --showConfig`), without the path-relative `rootDir`/`outDir`.
+ * (`tsc --showConfig`), without the path-relative `rootDir`/`outDir`, and
+ * with `target` lowered to ES2020 for Apps Script's parser.
  */
 const GAS_ERROR_OPTIONS = {
-  target: 'es2021',
+  target: 'es2020',
   types: ['google-apps-script'],
   lib: ['es2021'],
   declaration: true,
@@ -97,7 +98,7 @@ describe('tsconfig/gas.json', () => {
 
   afterAll(() => project.cleanup());
 
-  it('has the same effective compilerOptions as the gas-error tsconfig', () => {
+  it('has the effective compilerOptions of the gas-error tsconfig, targeting ES2020', () => {
     writeFileSync(
       join(project.dir, 'tsconfig.json'),
       JSON.stringify({
@@ -111,6 +112,24 @@ describe('tsconfig/gas.json', () => {
       }),
     );
     expect(compilerOptions).toEqual(GAS_ERROR_OPTIONS);
+  });
+
+  it('downlevels the ES2021 syntax Apps Script rejects', () => {
+    writeFileSync(
+      join(project.dir, 'es2021.ts'),
+      'let a = 0;\na ||= 1;\nlet b: number | null = null;\nb ??= 1_000;\n',
+    );
+    writeFileSync(
+      join(project.dir, 'tsconfig.json'),
+      JSON.stringify({
+        extends: 'gas-dev-config/tsconfig/gas.json',
+        compilerOptions: { outDir: 'out', declaration: false },
+        include: ['es2021.ts'],
+      }),
+    );
+    execFileSync(TSC, ['-p', project.dir], { encoding: 'utf8' });
+    const output = readFileSync(join(project.dir, 'out', 'es2021.js'), 'utf8');
+    expect(output).not.toMatch(/\|\|=|\?\?=|1_000/);
   });
 });
 

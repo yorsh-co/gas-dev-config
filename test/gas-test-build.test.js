@@ -79,6 +79,18 @@ describe('buildGasTest', () => {
     );
   });
 
+  it('downlevels the ES2021 syntax Apps Script rejects', () => {
+    const dir = createProject();
+    writeFileSync(join(dir, 'src', 'a.ts'), 'let A = 0;\nA ||= 1_000;\n');
+    buildGasTest(dir, {
+      preset: 'gas',
+      loadOrder: ['a.ts'],
+      peers: undefined,
+      gasTest: undefined,
+    });
+    expect(captured[0]?.text).not.toMatch(/\|\|=|1_000/);
+  });
+
   it('uses no libraries without peers and a unique first line per build', () => {
     const dir = createProject();
     const config = {
