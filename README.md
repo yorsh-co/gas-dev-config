@@ -369,7 +369,7 @@ The runtime logs `PASS`, `FAIL` and `INFO` lines and a summary (`<p> passed, <f>
 
 ### Commands
 
-Suggested library scripts:
+With `gasTest` configured, `gas-dev-config check` requires these scripts with exactly these values. `typecheck` is a suggested addition and is only required to exist:
 
 ```json
 {
@@ -458,12 +458,12 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 
 ### What is checked
 
-| File                     | Rule                                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| `.gitignore`             | Every line of the template is present. Extra lines, blanks and comments are allowed         |
-| `.prettierignore`        | Every line of the template is present. Extra lines, blanks and comments are allowed         |
-| `.github/dependabot.yml` | Equals the template (ignoring trailing whitespace and final newlines)                       |
-| `package.json` `scripts` | Required scripts have exactly the template value; present scripts must exist with any value |
+| File                     | Rule                                                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.gitignore`             | Every line of the template is present. Extra lines, blanks and comments are allowed                                                                                       |
+| `.prettierignore`        | Every line of the template is present. Extra lines, blanks and comments are allowed                                                                                       |
+| `.github/dependabot.yml` | Equals the template (ignoring trailing whitespace and final newlines)                                                                                                     |
+| `package.json` `scripts` | Required scripts have exactly the template value; present scripts must exist with any value. With `gasTest` configured, `test:gas:build` and `test:gas` are also required |
 
 Required lines per preset:
 
@@ -489,7 +489,7 @@ Required scripts, exact values, for the `gas` preset. They assume `rimraf` and [
 | `test`          | `vitest run`                                                                                        |
 | `test:watch`    | `vitest`                                                                                            |
 
-The `gas` preset also requires `build`, `build:watch` and `typecheck` to exist, with any value.
+The `gas` preset also requires `build`, `build:watch` and `typecheck` to exist, with any value. With `gasTest` configured it also requires `test:gas:build` (`gas-dev-config gas-test build`) and `test:gas` (`gas-dev-config gas-test run`).
 
 For the `node` preset the required scripts are `typecheck` (`tsc --noEmit && echo '✓ TypeScript passed'`), `lint`, `lint:fix`, `format`, `format:check`, `check`, `test` and `test:watch`, with the same values as above. No script is merely required to be present.
 

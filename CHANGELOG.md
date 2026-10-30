@@ -2,6 +2,14 @@
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- `gas-dev-config check` requires the `test:gas:build` and `test:gas` scripts, with the values of the Apps Script test commands, when `gasDevConfig.gasTest` is configured
+
+---
+
 ## [1.3.0] - 2026-10-28
 
 ### Added

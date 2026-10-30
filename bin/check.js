@@ -22,6 +22,7 @@ const SELF_BIN = 'node bin/gas-dev-config.js';
  * @typedef {object} ScriptsTemplate
  * @property {Record<string, string>} required Scripts that must have exactly this value.
  * @property {string[]} present Scripts that must exist with any value.
+ * @property {Record<string, string>} [gasTest] Scripts required, with exactly this value, when `gasTest` is configured.
  */
 
 /**
@@ -324,9 +325,10 @@ function checkDependabot(cwd, preset) {
  *
  * @param {Record<string, unknown>} pkg
  * @param {string} preset
+ * @param {GasTestConfig | undefined} gasTest Configured `gasTest` settings, if any.
  * @returns {Drift[]}
  */
-function checkScripts(pkg, preset) {
+function checkScripts(pkg, preset, gasTest) {
   const file = 'package.json';
   const template = /** @type {ScriptsTemplate} */ (
     readJson(new URL(`${preset}/scripts.json`, TEMPLATES), 'scripts template')
@@ -335,7 +337,8 @@ function checkScripts(pkg, preset) {
   const isSelf = pkg['name'] === 'gas-dev-config';
   /** @type {Drift[]} */
   const drift = [];
-  for (const [name, wanted] of Object.entries(template.required)) {
+  const required = { ...template.required, ...(gasTest && template.gasTest) };
+  for (const [name, wanted] of Object.entries(required)) {
     const expected = isSelf
       ? wanted.replace('gas-dev-config check', `${SELF_BIN} check`)
       : wanted;
@@ -410,12 +413,12 @@ export function loadConfig(cwd) {
  */
 export function checkProject(cwd) {
   const pkg = readPackage(cwd);
-  const { preset, loadOrder } = resolveConfig(pkg);
+  const { preset, loadOrder, gasTest } = resolveConfig(pkg);
   const drift = [
     ...checkIgnoreFile(cwd, preset, '.gitignore'),
     ...checkIgnoreFile(cwd, preset, '.prettierignore'),
     ...checkDependabot(cwd, preset),
-    ...checkScripts(pkg, preset),
+    ...checkScripts(pkg, preset, gasTest),
     ...(loadOrder ? checkLoadOrder(cwd, loadOrder) : []),
   ];
   return { preset, drift };

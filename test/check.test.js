@@ -41,8 +41,9 @@ function createCleanProject(preset, pkgExtra = {}) {
     join(dir, '.github', 'dependabot.yml'),
     read('.github/dependabot.yml'),
   );
-  const { required, present } = JSON.parse(read('scripts.json'));
-  const scripts = { ...required };
+  const { required, present, gasTest } = JSON.parse(read('scripts.json'));
+  const configured = /** @type {any} */ (pkgExtra.gasDevConfig)?.gasTest;
+  const scripts = { ...required, ...(configured && gasTest) };
   for (const name of present) scripts[name] = 'true';
   writePackage(dir, { name: 'consumer', scripts, ...pkgExtra });
   return dir;
@@ -374,6 +375,62 @@ describe('check (gasTest)', () => {
     const result = run(make({ loadOrder: ['a.ts'], gasTest }), ['check']);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(message);
+  });
+
+  describe('scripts', () => {
+    const config = { loadOrder: ['a.ts'], gasTest: { scopes } };
+
+    /** @param {(scripts: Record<string, string>) => void} edit */
+    function makeWith(edit) {
+      const dir = make(config);
+      const pkg = readPackage(dir);
+      edit(pkg.scripts);
+      writePackage(dir, pkg);
+      return dir;
+    }
+
+    it('requires test:gas:build and test:gas when configured', () => {
+      const dir = makeWith((scripts) => {
+        delete scripts['test:gas:build'];
+        delete scripts['test:gas'];
+      });
+      const result = run(dir, ['check']);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        'scripts.test:gas:build is missing; expected: gas-dev-config gas-test build',
+      );
+      expect(result.stderr).toContain(
+        'scripts.test:gas is missing; expected: gas-dev-config gas-test run',
+      );
+      expect(result.stderr).toContain('2 issue(s) in 1 file(s)');
+    });
+
+    it('reports a different value', () => {
+      const dir = makeWith((scripts) => {
+        scripts['test:gas'] = 'clasp run';
+      });
+      const result = run(dir, ['check']);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        'scripts.test:gas differs; expected: gas-dev-config gas-test run; found: "clasp run"',
+      );
+    });
+
+    it('passes with the expected values', () => {
+      expect(
+        run(
+          makeWith(() => {}),
+          ['check'],
+        ).status,
+      ).toBe(0);
+    });
+
+    it('does not require the scripts without gasTest', () => {
+      const dir = make({ loadOrder: ['a.ts'] });
+      const scripts = readPackage(dir).scripts;
+      expect(scripts['test:gas']).toBeUndefined();
+      expect(run(dir, ['check']).status).toBe(0);
+    });
   });
 
   it('requires loadOrder', () => {
