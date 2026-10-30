@@ -13,5 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "present": ["build", "build:watch", "typecheck"]
+  "present": ["build", "build:watch", "typecheck"],
+  "gasTest": {
+    "test:gas:build": "gas-dev-config gas-test build",
+    "test:gas": "gas-dev-config gas-test run"
+  }
 }
