@@ -2,6 +2,14 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- README: overview of the three gas-dev-\* tools, their roles and how the `gasDevConfig` → `gasLibrary` metadata connects them
+
+---
+
 ## [1.4.1] - 2026-10-30
 
 ### Fixed
