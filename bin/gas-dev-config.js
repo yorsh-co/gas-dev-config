@@ -2,25 +2,28 @@
 // @ts-check
 import { parseArgs } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
-import { CheckError, checkProject, formatReport } from './check.js';
+import { CheckError, checkProject, formatReport, loadConfig } from './check.js';
 import { GasTestError, runBuild, runRun } from './gas-test.js';
+import { HtmlError, runHtml } from './html.js';
 
 const OPTIONS = /** @type {const} */ ({
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean' },
   out: { type: 'string' },
   keep: { type: 'boolean' },
+  check: { type: 'boolean' },
 });
 
 const USAGE = `Usage: gas-dev-config check
        gas-dev-config gas-test build [--out <file>]
        gas-dev-config gas-test run [--keep]
+       gas-dev-config html [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
 standard package.json scripts from the preset templates. Never writes.
 
 The preset is read from package.json: "gasDevConfig": { "preset": "gas" | "node" }
-(default: gas). "loadOrder", "peers" and "gasTest" are also validated.
+(default: gas). "loadOrder", "peers", "gasTest" and "html" are also validated.
 
 Commands:
   check            Compare the project in the current directory with the templates
@@ -29,6 +32,9 @@ Commands:
   gas-test run     Push that script to the dedicated test project with clasp
                    (replacing its whole contents), run it and print the results;
                    needs GAS_TEST_SCRIPT_ID or "gasTest.scriptId"
+  html             Inline each "html" entry's local stylesheets and scripts
+                   (TypeScript is transpiled) into a generated .ts file that
+                   declares the page as a string constant
 
 Options:
   -h, --help       Show this help
@@ -36,6 +42,7 @@ Options:
   --out <file>     gas-test build: output file
                    (default: node_modules/.cache/gas-dev-config/gas-test.js)
   --keep           gas-test run: keep the temporary project directory
+  --check          html: write nothing; exit 1 when a generated file is stale
 `;
 
 /**
@@ -83,7 +90,8 @@ export function main(argv) {
   const isBuild = command === 'gas-test' && rest.join(' ') === 'build';
   const isRun = command === 'gas-test' && rest.join(' ') === 'run';
   const isCheck = command === 'check' && rest.length === 0;
-  if (!isCheck && !isBuild && !isRun) {
+  const isHtml = command === 'html' && rest.length === 0;
+  if (!isCheck && !isBuild && !isRun && !isHtml) {
     return usageError(`unknown command: ${positionals.join(' ')}.`);
   }
   if (values.out !== undefined && !isBuild) {
@@ -92,7 +100,14 @@ export function main(argv) {
   if (values.keep && !isRun) {
     return usageError('--keep is only valid with gas-test run.');
   }
+  if (values.check && !isHtml) {
+    return usageError('--check is only valid with html.');
+  }
   try {
+    if (isHtml) {
+      const { html } = loadConfig(process.cwd());
+      return runHtml(process.cwd(), html, { check: values.check === true });
+    }
     if (isBuild) return runBuild(process.cwd(), { out: values.out });
     if (isRun) return runRun(process.cwd(), { keep: values.keep === true });
     const { drift } = checkProject(process.cwd());
@@ -100,7 +115,11 @@ export function main(argv) {
     (drift.length === 0 ? process.stdout : process.stderr).write(out);
     return drift.length === 0 ? 0 : 1;
   } catch (error) {
-    if (error instanceof CheckError || error instanceof GasTestError) {
+    if (
+      error instanceof CheckError ||
+      error instanceof GasTestError ||
+      error instanceof HtmlError
+    ) {
       process.stderr.write(`gas-dev-config: ${error.message}\n`);
       return 1;
     }

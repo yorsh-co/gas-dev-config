@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet" />
+    <LINK
+      rel="stylesheet"
+      href=app.css
+    />
+    <style>
+      /* <link rel="stylesheet" href="ignored.css"> */
+    </style>
+  </head>
+  <body>
+    <!-- <script src="commented.js"></script> -->
+    <div id="app" data-dev-only>
+      <p>dev banner <div>nested</div></p>
+    </div>
+    <script>
+      const tpl = '<script src="inline.js"></script' + '>';
+    </script>
+    <script src="//cdn.example.com/lib.js"></script>
+    <script src="data:text/javascript,1"></script>
+    <script type="text/javascript" defer src='plain.js' ></script>
+    <SCRIPT
+      src="app.js"
+    ></SCRIPT>
+    <script src="mock.js" data-dev-only></script>
+    <link rel="stylesheet" href="mock.css" data-dev-only>
+  </body>
+</html>
