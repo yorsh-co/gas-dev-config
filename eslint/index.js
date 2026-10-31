@@ -36,6 +36,26 @@ const GAS_TEST_GLOBALS = /** @type {const} */ ({
 });
 
 /**
+ * Apps Script's push-time parser rejects `async` and `await`, which
+ * TypeScript emits unchanged at the ES2020 target. Applied to Apps Script
+ * blocks only; a later `no-restricted-syntax` entry for the same files
+ * replaces it, so extra configs must repeat these selectors.
+ */
+const NO_ASYNC_MESSAGE =
+  'Apps Script rejects async/await on push; Apps Script code must be synchronous.';
+/** @type {import('eslint').Linter.RulesRecord} */
+const noAsyncRule = {
+  'no-restricted-syntax': [
+    'error',
+    ...[
+      ':function[async=true]',
+      'AwaitExpression',
+      'ForOfStatement[await=true]',
+    ].map((selector) => ({ selector, message: NO_ASYNC_MESSAGE })),
+  ],
+};
+
+/**
  * @param {unknown} value
  * @returns {value is string[]}
  */
@@ -156,7 +176,7 @@ export function gasEslint(options = {}, ...extra) {
         sourceType: 'script', // no import/export — GAS files share one global scope
         parserOptions: { project: './tsconfig.json' },
       },
-      rules: unusedVarsOff,
+      rules: { ...unusedVarsOff, ...noAsyncRule },
     },
 
     // Frontend (DOM lib, no GAS types)
@@ -198,7 +218,7 @@ export function gasEslint(options = {}, ...extra) {
               globals: GAS_TEST_GLOBALS,
               parserOptions: { project: './gas-test/tsconfig.json' },
             },
-            rules: unusedVarsOff,
+            rules: { ...unusedVarsOff, ...noAsyncRule },
           },
         ]
       : []),
