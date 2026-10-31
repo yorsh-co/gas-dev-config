@@ -172,6 +172,49 @@ describe('gasEslint() default preset', () => {
     }
   });
 
+  it.each([
+    ['async function declaration', 'async function f() {}\n'],
+    ['async function expression', 'const f = async function () {};\n'],
+    ['async arrow function', 'const f = async () => 1;\n'],
+    ['async class method', 'class A {\n  async m() {}\n}\n'],
+    ['async object method', 'const o = {\n  async m() {},\n};\n'],
+    ['await', 'async function f() {\n  await 1;\n}\n', 2],
+    [
+      'for await',
+      'async function f(xs: AsyncIterable<number>) {\n  for await (const x of xs) console.log(x);\n}\n',
+      2,
+    ],
+  ])('forbids %s in src and gas-test', (_name, code, count = 1) => {
+    const files = ['src/async.ts', 'gas-test/async.ts'];
+    for (const file of files) writeFileSync(join(project.dir, file), code);
+    const results = lint(project.dir, ...files);
+    for (const file of files) {
+      expect(results[file]).toEqual(Array(count).fill('no-restricted-syntax'));
+    }
+  });
+
+  it('names the cause in the async/await message', () => {
+    const configs = gasEslint({ cwd: project.dir });
+    const block = configs.find((c) => c.files?.toString() === 'src/**/*.ts');
+    expect(JSON.stringify(block?.rules?.['no-restricted-syntax'])).toContain(
+      'Apps Script rejects async/await on push',
+    );
+  });
+
+  it('allows async in test and scripts', () => {
+    writeFileSync(
+      join(project.dir, 'test/async.ts'),
+      'export async function f() {\n  await 1;\n}\n',
+    );
+    writeFileSync(
+      join(project.dir, 'scripts/async.js'),
+      'export async function f() {\n  await 1;\n}\n',
+    );
+    const files = ['test/async.ts', 'scripts/async.js'];
+    const results = lint(project.dir, ...files);
+    for (const file of files) expect(results[file]).toEqual([]);
+  });
+
   it('includes the test block only when tsconfig.test.json exists', () => {
     expect(hasTestBlock(gasEslint({ cwd: project.dir }))).toBe(true);
     rmSync(join(project.dir, 'tsconfig.test.json'));
@@ -237,9 +280,10 @@ describe('gasEslint() equivalence with gas-error', () => {
       overrideConfigFile: join(project.dir, 'legacy.config.js'),
     });
     for (const file of ['src/lib.ts', 'test/lib.ts', 'scripts/x.js']) {
-      expect(await resolved(factory, project.dir, file)).toEqual(
-        await resolved(legacy, project.dir, file),
-      );
+      const actual = await resolved(factory, project.dir, file);
+      // The async/await restriction is the only deliberate divergence.
+      if (file === 'src/lib.ts') delete actual.rules?.['no-restricted-syntax'];
+      expect(actual).toEqual(await resolved(legacy, project.dir, file));
     }
     for (const file of ['peer/x.d.ts', 'dist/x.js']) {
       expect(await factory.isPathIgnored(join(project.dir, file))).toBe(
@@ -283,6 +327,20 @@ describe('gasEslint({ web })', () => {
       './tsconfig.json',
     );
     expect(gas?.languageOptions?.globals ?? {}).not.toHaveProperty('document');
+  });
+
+  it('allows async in web files but forbids it in GAS files', () => {
+    const code = 'async function f() {\n  await 1;\n}\n';
+    writeFileSync(join(project.dir, 'src/web/async.ts'), code);
+    writeFileSync(join(project.dir, 'src/async.ts'), code);
+    const results = lint(project.dir, 'src/web/async.ts', 'src/async.ts');
+    rmSync(join(project.dir, 'src/web/async.ts'));
+    rmSync(join(project.dir, 'src/async.ts'));
+    expect(results['src/web/async.ts']).toEqual([]);
+    expect(results['src/async.ts']).toEqual([
+      'no-restricted-syntax',
+      'no-restricted-syntax',
+    ]);
   });
 
   it('reports no errors on the clean fixture and flags seeded violations', async () => {

@@ -190,6 +190,7 @@ Any further arguments are flat configs applied after the preset and before Prett
 - `src/**/*.ts` as Apps Script files: `sourceType: 'script'` (the files share one global scope), type-aware linting with `./tsconfig.json`, unused-variable rules off
 - With `web`: `web.files` are excluded from the Apps Script block and linted as browser scripts (browser globals, `web.tsconfig`, unused-variable rules off)
 - `test/**/*.ts` as Node ES modules with `./tsconfig.test.json`, only when `tsconfig.test.json` exists in `cwd`
+- `async` functions and `await` (including `for await`) are errors in `src/` and `gas-test/` Apps Script files, via `no-restricted-syntax`: Apps Script rejects both on push. A `no-restricted-syntax` entry in an extra config for the same files replaces this one, so repeat the selectors (`:function[async=true]`, `AwaitExpression`, `ForOfStatement[await=true]`) there. Web, `test/` and `scripts/` files are unaffected
 - `gas-test/**/*.ts` as Apps Script files (`sourceType: 'script'`, the `test`, `info`, `assert` and `runGasTests` globals, type-aware linting with `./gas-test/tsconfig.json`, unused-variable rules off), only when `gas-test/tsconfig.json` exists in `cwd`; they are not Node test modules
 - `scripts/**/*.js` as Node ES modules
 - `dist/`, `.worktrees/` and `peer/` ignored; `peer/` holds ambient declarations that are outside the tsconfig `include`
