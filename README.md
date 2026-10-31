@@ -19,6 +19,36 @@
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - Plain ESM JavaScript, no build step
 
+<a id="gas-dev-tools"></a>
+
+## The gas-dev-\* tools
+
+Three development tools support the gas-\* libraries. None of them is ever pushed to Apps Script.
+
+| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`); the Vitest loader; Apps Script tests (`gas-test build`/`run`) |
+| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                               |
+| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                    |
+
+Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead).
+
+The tools are connected by one piece of metadata, declared once in the library:
+
+```text
+library package.json            dist/vX.Y.Z package.json          consumer project
+"gasDevConfig": {               "gasLibrary": {                   src/lib/gas-libraries.js
+  "loadOrder": [...],  ──────►    "loadOrder": [...],   ──────►   (libraries and their files
+  "peers": {...}                  "peers": {...}                   in load order)
+}                               }
+validated by                    written by                        written by
+gas-dev-config check            gas-dev-release                   gas-dev-bundle
+```
+
+The only code dependency between them: `gas-dev-config gas-test build` uses `gas-dev-bundle` to bundle a library's peers ahead of the library under test.
+
+A library release therefore runs: `npm run check` (presets, tests and `gas-dev-config check`), `npm run test:gas` on the release branch (Apps Script tests, manual), then `npm run build:release` (build, then `gas-dev-release`).
+
 ## Requirements
 
 - Node.js >= 20.10
@@ -160,6 +190,7 @@ Any further arguments are flat configs applied after the preset and before Prett
 - `src/**/*.ts` as Apps Script files: `sourceType: 'script'` (the files share one global scope), type-aware linting with `./tsconfig.json`, unused-variable rules off
 - With `web`: `web.files` are excluded from the Apps Script block and linted as browser scripts (browser globals, `web.tsconfig`, unused-variable rules off)
 - `test/**/*.ts` as Node ES modules with `./tsconfig.test.json`, only when `tsconfig.test.json` exists in `cwd`
+- `async` functions and `await` (including `for await`) are errors in `src/` and `gas-test/` Apps Script files, via `no-restricted-syntax`: Apps Script rejects both on push. A `no-restricted-syntax` entry in an extra config for the same files replaces this one, so repeat the selectors (`:function[async=true]`, `AwaitExpression`, `ForOfStatement[await=true]`) there. Web, `test/` and `scripts/` files are unaffected
 - `gas-test/**/*.ts` as Apps Script files (`sourceType: 'script'`, the `test`, `info`, `assert` and `runGasTests` globals, type-aware linting with `./gas-test/tsconfig.json`, unused-variable rules off), only when `gas-test/tsconfig.json` exists in `cwd`; they are not Node test modules
 - `scripts/**/*.js` as Node ES modules
 - `dist/`, `.worktrees/` and `peer/` ignored; `peer/` holds ambient declarations that are outside the tsconfig `include`

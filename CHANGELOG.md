@@ -2,6 +2,15 @@
 
 ---
 
+## [1.5.0] - 2026-10-31
+
+### Added
+
+- `gas` ESLint preset forbids `async` functions and `await` (including `for await`) in `src/` and `gas-test/` Apps Script sources: Apps Script's push-time parser rejects both, so one async function broke `clasp push`. Browser (`web.files`), `test/` and `scripts/` files and the `node` preset are unaffected
+- README: overview of the three gas-dev-\* tools, their roles and how the `gasDevConfig` → `gasLibrary` metadata connects them
+
+---
+
 ## [1.4.1] - 2026-10-30
 
 ### Fixed
