@@ -2,6 +2,15 @@
 
 ---
 
+## [1.6.0] - 2026-10-31
+
+### Added
+
+- `gasDevConfig.html` (gas preset, requires `loadOrder`): `{ entry, out, name }` entries for the HTML build, validated by `gas-dev-config check`, which also reports a missing entry, an `out` absent from `loadOrder` and a stale or missing generated file as drift
+- `gas-dev-config html [--check]`: inlines local `<link rel="stylesheet">` and `<script src>` (transpiling the `.ts` next to a referenced `.js`, without type-checking) into a page, removes `data-dev-only` elements, rejects code containing `</script` or `</style`, and writes the page as a string constant in a generated `.ts` file; `--check` writes nothing and exits `1` when a file is stale
+
+---
+
 ## [1.5.0] - 2026-10-31
 
 ### Added

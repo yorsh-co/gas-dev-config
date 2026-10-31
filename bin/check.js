@@ -1,10 +1,61 @@
 // @ts-check
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { HtmlError, compareModule } from './html.js';
 
 const PRESETS = ['gas', 'node'];
-const KNOWN_KEYS = ['preset', 'loadOrder', 'peers', 'gasTest'];
+const KNOWN_KEYS = ['preset', 'loadOrder', 'peers', 'gasTest', 'html'];
 const GAS_TEST_KEYS = ['scopes', 'scriptId'];
+const HTML_KEYS = ['entry', 'out', 'name'];
+const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+const RESERVED_WORDS = new Set([
+  'await',
+  'break',
+  'case',
+  'catch',
+  'class',
+  'const',
+  'continue',
+  'debugger',
+  'default',
+  'delete',
+  'do',
+  'else',
+  'enum',
+  'export',
+  'extends',
+  'false',
+  'finally',
+  'for',
+  'function',
+  'if',
+  'implements',
+  'import',
+  'in',
+  'instanceof',
+  'interface',
+  'let',
+  'new',
+  'null',
+  'package',
+  'private',
+  'protected',
+  'public',
+  'return',
+  'static',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typeof',
+  'var',
+  'void',
+  'while',
+  'with',
+  'yield',
+]);
 const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
 const PEER_NAME = /^[a-z0-9][a-z0-9._-]*$/;
 const TEMPLATES = new URL('../templates/', import.meta.url);
@@ -32,11 +83,19 @@ const SELF_BIN = 'node bin/gas-dev-config.js';
  */
 
 /**
+ * @typedef {object} HtmlEntry
+ * @property {string} entry HTML file to inline, relative to the project root.
+ * @property {string} out Generated TypeScript file under `src/`, relative to the project root.
+ * @property {string} name Identifier of the string constant the file declares.
+ */
+
+/**
  * @typedef {object} ResolvedConfig
  * @property {string} preset Preset name; `gas` when unset.
  * @property {string[] | undefined} loadOrder Source files under `src/` in load order.
  * @property {Record<string, string> | undefined} peers Optional sibling libraries and their version ranges.
  * @property {GasTestConfig | undefined} gasTest Settings for tests that run in Apps Script.
+ * @property {HtmlEntry[] | undefined} [html] Pages inlined into generated TypeScript constants.
  */
 
 /** Raised for a configuration problem that prevents the check from running. */
@@ -206,6 +265,100 @@ function parseGasTest(value) {
 }
 
 /**
+ * Describes why a value is not a relative POSIX path, or returns `undefined`.
+ *
+ * @param {string} value
+ * @returns {string | undefined}
+ */
+function relativePathProblem(value) {
+  if (value.startsWith('/') || /^[A-Za-z]:/.test(value)) {
+    return 'must be relative to the project root';
+  }
+  if (value.includes('\\')) return 'must use "/" separators';
+  if (value.split('/').some((p) => p === '' || p === '.' || p === '..')) {
+    return 'must not contain empty, "." or ".." segments';
+  }
+  return undefined;
+}
+
+/**
+ * Validates `gasDevConfig.html`: a non-empty list of `{ entry, out, name }`
+ * objects with unique `out` and `name` values.
+ *
+ * @param {unknown} value
+ * @returns {HtmlEntry[]}
+ */
+function parseHtml(value) {
+  const key = 'package.json: "gasDevConfig.html"';
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new CheckError(`${key} must be a non-empty array of objects`);
+  }
+  /** @type {Set<string>} */
+  const outs = new Set();
+  /** @type {Set<string>} */
+  const names = new Set();
+  value.forEach((item, index) => {
+    const path = `${key}[${index}]`;
+    if (!isRecord(item)) throw new CheckError(`${path} must be an object`);
+    const unknown = Object.keys(item).filter((k) => !HTML_KEYS.includes(k));
+    if (unknown.length > 0) {
+      throw new CheckError(
+        `package.json: unknown key(s): ${unknown.map((k) => `"gasDevConfig.html[${index}].${k}"`).join(', ')} (expected: ${HTML_KEYS.join(', ')})`,
+      );
+    }
+    for (const field of HTML_KEYS) {
+      const v = item[field];
+      if (typeof v !== 'string' || v === '') {
+        throw new CheckError(
+          `${path}.${field} ${JSON.stringify(v)} must be a non-empty string`,
+        );
+      }
+    }
+    const { entry, out, name } = /** @type {Record<string, string>} */ (item);
+    for (const [field, v] of [
+      ['entry', entry],
+      ['out', out],
+    ]) {
+      const problem = relativePathProblem(/** @type {string} */ (v));
+      if (problem) {
+        throw new CheckError(
+          `${path}.${field} ${JSON.stringify(v)} ${problem}`,
+        );
+      }
+    }
+    if (!entry?.endsWith('.html')) {
+      throw new CheckError(
+        `${path}.entry ${JSON.stringify(entry)} must be an .html file`,
+      );
+    }
+    if (!out?.startsWith('src/')) {
+      throw new CheckError(
+        `${path}.out ${JSON.stringify(out)} must be under src/`,
+      );
+    }
+    if (!out.endsWith('.ts') || out.endsWith('.d.ts')) {
+      throw new CheckError(
+        `${path}.out ${JSON.stringify(out)} must be a .ts file other than .d.ts`,
+      );
+    }
+    if (!name || !IDENTIFIER.test(name) || RESERVED_WORDS.has(name)) {
+      throw new CheckError(
+        `${path}.name ${JSON.stringify(name)} must be a valid JavaScript identifier`,
+      );
+    }
+    if (outs.has(out)) {
+      throw new CheckError(`${key} lists out ${JSON.stringify(out)} twice`);
+    }
+    if (names.has(name)) {
+      throw new CheckError(`${key} lists name ${JSON.stringify(name)} twice`);
+    }
+    outs.add(out);
+    names.add(name);
+  });
+  return /** @type {HtmlEntry[]} */ (value);
+}
+
+/**
  * Resolves and validates the `gasDevConfig` field of package.json.
  *
  * @param {Record<string, unknown>} pkg
@@ -228,7 +381,7 @@ function resolveConfig(pkg) {
       `package.json: unknown preset ${JSON.stringify(preset)} (expected: ${PRESETS.join(', ')})`,
     );
   }
-  for (const key of ['loadOrder', 'peers', 'gasTest']) {
+  for (const key of ['loadOrder', 'peers', 'gasTest', 'html']) {
     if (config[key] !== undefined && preset !== 'gas') {
       throw new CheckError(
         `package.json: "gasDevConfig.${key}" requires the gas preset`,
@@ -238,6 +391,11 @@ function resolveConfig(pkg) {
   if (config['gasTest'] !== undefined && config['loadOrder'] === undefined) {
     throw new CheckError(
       'package.json: "gasDevConfig.gasTest" requires "gasDevConfig.loadOrder"',
+    );
+  }
+  if (config['html'] !== undefined && config['loadOrder'] === undefined) {
+    throw new CheckError(
+      'package.json: "gasDevConfig.html" requires "gasDevConfig.loadOrder"',
     );
   }
   return {
@@ -252,6 +410,7 @@ function resolveConfig(pkg) {
       config['gasTest'] === undefined
         ? undefined
         : parseGasTest(config['gasTest']),
+    html: config['html'] === undefined ? undefined : parseHtml(config['html']),
   };
 }
 
@@ -380,6 +539,49 @@ function checkLoadOrder(cwd, loadOrder) {
 }
 
 /**
+ * Requires each `html` entry to exist, its output to be in `loadOrder`, and
+ * the output on disk to equal a fresh build.
+ *
+ * @param {string} cwd
+ * @param {HtmlEntry[]} html
+ * @param {string[]} loadOrder
+ * @returns {Drift[]}
+ */
+function checkHtml(cwd, html, loadOrder) {
+  /** @type {Drift[]} */
+  const drift = [];
+  for (const config of html) {
+    const { entry, out } = config;
+    if (!loadOrder.includes(out.slice('src/'.length))) {
+      drift.push({
+        file: 'package.json',
+        message: `gasDevConfig.loadOrder: ${out.slice('src/'.length)} (the output of ${entry}) is missing`,
+      });
+    }
+    if (!existsSync(join(cwd, entry))) {
+      drift.push({
+        file: 'package.json',
+        message: `gasDevConfig.html: ${entry} does not exist`,
+      });
+      continue;
+    }
+    try {
+      const state = compareModule(cwd, config);
+      if (state !== 'current') {
+        drift.push({
+          file: out,
+          message: `${state === 'missing' ? 'file is missing' : 'is out of date'}: run gas-dev-config html`,
+        });
+      }
+    } catch (error) {
+      if (!(error instanceof HtmlError)) throw error;
+      drift.push({ file: entry, message: error.message });
+    }
+  }
+  return drift;
+}
+
+/**
  * Reads package.json from a project.
  *
  * @param {string} cwd Project root.
@@ -413,13 +615,14 @@ export function loadConfig(cwd) {
  */
 export function checkProject(cwd) {
   const pkg = readPackage(cwd);
-  const { preset, loadOrder, gasTest } = resolveConfig(pkg);
+  const { preset, loadOrder, gasTest, html } = resolveConfig(pkg);
   const drift = [
     ...checkIgnoreFile(cwd, preset, '.gitignore'),
     ...checkIgnoreFile(cwd, preset, '.prettierignore'),
     ...checkDependabot(cwd, preset),
     ...checkScripts(pkg, preset, gasTest),
     ...(loadOrder ? checkLoadOrder(cwd, loadOrder) : []),
+    ...(loadOrder && html ? checkHtml(cwd, html, loadOrder) : []),
   ];
   return { preset, drift };
 }

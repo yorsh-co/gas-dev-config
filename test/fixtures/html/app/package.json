@@ -1,0 +1,13 @@
+{
+  "name": "consumer",
+  "gasDevConfig": {
+    "loadOrder": ["generated/app.html.ts"],
+    "html": [
+      {
+        "entry": "src/web/app.html",
+        "out": "src/generated/app.html.ts",
+        "name": "_APP_HTML"
+      }
+    ]
+  }
+}

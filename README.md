@@ -17,6 +17,7 @@
 - The check is read-only: it never writes to your project
 - `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
+- `gas-dev-config html` inlines a page edited as `.html`, `.css` and TypeScript into one generated `.ts` string constant, so an HtmlService UI ships as a single Apps Script source file
 - Plain ESM JavaScript, no build step
 
 <a id="gas-dev-tools"></a>
@@ -25,11 +26,11 @@
 
 Three development tools support the gas-\* libraries. None of them is ever pushed to Apps Script.
 
-| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                    |
-| ---------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`); the Vitest loader; Apps Script tests (`gas-test build`/`run`) |
-| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                               |
-| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                    |
+| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`) |
+| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                |
+| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                     |
 
 Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead).
 
@@ -436,6 +437,83 @@ Run `npm run test:gas:build`, paste the generated file into the Apps Script edit
 - Apps Script stops an execution after 6 minutes; the run's sheets are then removed by the next run's stale-sheet sweep.
 - Runs share the project's script properties and spreadsheet, so do not run two at once.
 
+## HTML build
+
+A library that ships an HtmlService UI edits it as `.html`, `.css` and TypeScript files, but Apps Script needs it as source files that gas-dev-bundle (`.js` only), git subtree, the Vitest loader and gas-dev-release already handle. `gas-dev-config html` inlines the page and writes it as a `.ts` file that declares the whole page as one string constant, listed in `loadOrder` like any other source.
+
+### Configuration
+
+`gasDevConfig.html` requires `loadOrder` and the `gas` preset:
+
+```json
+{
+  "gasDevConfig": {
+    "loadOrder": ["generated/gas-config.ui.html.ts", "gas-config.ui.ts"],
+    "html": [
+      {
+        "entry": "src/web/gas-config.ui.html",
+        "out": "src/generated/gas-config.ui.html.ts",
+        "name": "_GAS_CONFIG_UI_HTML"
+      }
+    ]
+  }
+}
+```
+
+| Key     | Value                                                                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entry` | Relative POSIX path to an `.html` file (no leading `/`, no backslashes, no `.` or `..` segments). Reported as drift when it does not exist  |
+| `out`   | Relative POSIX path under `src/` ending in `.ts` but not `.d.ts`. Its path relative to `src/` must be in `loadOrder`, otherwise it is drift |
+| `name`  | A valid JavaScript identifier for the constant                                                                                              |
+
+The array is non-empty, `out` and `name` are unique across entries, and unknown keys are errors naming their path.
+
+### Rules
+
+For each entry, the HTML is read and:
+
+1. `<link rel="stylesheet" href="...">` with a local `href` becomes `<style>` holding the file's contents. Only `media` is kept from its attributes.
+2. `<script src="..."></script>` with a local `src` becomes `<script>` holding the code, with its other attributes kept. If the `src` names a `.js` file and a `.ts` file with the same path and base name exists, the `.ts` is transpiled with the project's TypeScript (`transpileModule`, target ES2020, no module system: browser code is a classic global script) and not type-checked; run `tsc` for that, for example with `tsconfig/web.json`. Otherwise the `.js` is inlined as is. A missing file is an error naming its path, so `--check` needs no prior compile step.
+3. References resolve relative to the directory of the entry. Absolute URLs (`http:`, `https:`, any other scheme such as `data:`) and protocol-relative `//` references are left untouched; a root-relative one (`/x.js`) is an error.
+4. Any element with a `data-dev-only` attribute is removed with its content, for example a mock server script.
+5. Inlined code containing `</script` (case-insensitive) in a script, or `</style` in a stylesheet, is an error naming the source file, because the browser would end the element there. `<?` is allowed: the page must be served with `HtmlService.createHtmlOutput()`, not as a template, so no inlined code is evaluated as a scriptlet.
+
+Tags are found with a small scanner rather than an HTML parser. It handles attributes in any order, single, double and unquoted values, self-closing `<link />`, any tag case and multiline tags, and does not touch anything inside HTML comments, inline `<script>` and `<style>` elements or elements without a local reference.
+
+### Limitations
+
+- `url(...)` references in inlined CSS are not rewritten, so use absolute URLs or `data:` URIs.
+- Attribute entities are not decoded.
+- Root-relative references (`/x.js`) are errors, as is a direct `<script src="x.ts">`: reference `x.js` and the `.ts` source is transpiled.
+- A `<script src>` body is dropped.
+
+### The generated file
+
+```ts
+// Generated by `gas-dev-config html` from src/web/gas-config.ui.html. Do not edit.
+// prettier-ignore
+const _GAS_CONFIG_UI_HTML: string = "<!doctype html>...";
+```
+
+The page is escaped with `JSON.stringify`, so the output is byte-stable: LF line endings and a trailing newline. `// prettier-ignore` keeps Prettier from rewriting the quotes. Directories are created as needed.
+
+### Commands
+
+```
+gas-dev-config html [--check]
+```
+
+- `gas-dev-config html` writes every `out` and prints `✓ Generated <out>`.
+- `--check` writes nothing: it rebuilds in memory and compares with the file on disk. For each stale or missing file it prints `<out> is out of date: run gas-dev-config html` to stderr and exits `1`; otherwise it prints `✓ HTML build is up to date`.
+- A build error, or `html` not configured, exits `1`.
+- `gas-dev-config check` runs the same comparison when `html` is configured and reports it as drift.
+
+### Workflow
+
+1. Make `build:frontend` run `gas-dev-config html` after the frontend compile, for example `tsc -p tsconfig.frontend.json && gas-dev-config html`.
+2. Commit the generated file: tests, Apps Script tests and type-checking load it from `loadOrder`.
+3. `npm run check` fails with drift when it is stale, because `gas-dev-config check` is part of it. No script of the project is required by this feature.
+
 ## Config check
 
 Prettier, TypeScript and ESLint are shared through their own extension mechanisms. Four things have none, so `gas-dev-config check` compares them with templates and reports the drift:
@@ -451,6 +529,8 @@ It reads the project in the current directory and never writes. A passing run pr
 | `-h`, `--help` | Show usage       |
 | `--version`    | Show the version |
 
+`gas-dev-config html [--check]` is described in [HTML build](#html-build).
+
 Exit codes: `0` when the project matches, `1` on drift or an unusable `package.json`, `2` on invalid usage (a missing or unknown command, an unknown option).
 
 ### Presets
@@ -465,7 +545,7 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 }
 ```
 
-`loadOrder`, `peers` and `gasTest` are also read from `gasDevConfig`, for the `gas` preset only. Any other key or preset value is an error.
+`loadOrder`, `peers`, `gasTest` and `html` are also read from `gasDevConfig`, for the `gas` preset only. Any other key or preset value is an error.
 
 ```json
 {
@@ -486,6 +566,10 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 - `gasTest` configures [Apps Script tests](#apps-script-tests).
   - An object with the keys `scopes` and `scriptId`; any other key is an error naming its path.
   - `scopes` is a non-empty array of unique strings starting with `https://www.googleapis.com/auth/`; `scriptId` is an optional non-empty string.
+  - It requires `loadOrder`.
+- `html` configures the [HTML build](#html-build).
+  - A non-empty array of objects with the keys `entry`, `out` and `name`; any other key is an error naming its path.
+  - `out` and `name` are unique. Missing entry files, stale or missing generated files, and an `out` absent from `loadOrder` are reported as drift.
   - It requires `loadOrder`.
 - Any of these keys with the `node` preset is an error.
 
