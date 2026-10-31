@@ -222,7 +222,7 @@ describe('check (preset specifics)', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('unknown "gasDevConfig" key(s): presets');
     expect(result.stderr).toContain(
-      '(expected: preset, loadOrder, peers, gasTest)',
+      '(expected: preset, loadOrder, peers, gasTest, html)',
     );
   });
 
