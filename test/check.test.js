@@ -188,24 +188,27 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
     const template = (name) =>
       readFileSync(join(TEMPLATES, preset, name.slice(1)), 'utf8');
 
-    it('appends missing lines', () => {
-      const dir = make();
-      writeFileSync(
-        join(dir, '.gitignore'),
-        read(dir, '.gitignore').replace('.worktrees/\n', ''),
-      );
-      writeFileSync(
-        join(dir, '.prettierignore'),
-        read(dir, '.prettierignore').replace('.claude/plans\n', ''),
-      );
-      const result = run(dir, ['check', '--fix']);
-      expect(result.status).toBe(0);
-      expect(result.stdout).toContain('.gitignore: added .worktrees/');
-      expect(result.stdout).toContain('.prettierignore: added .claude/plans');
-      expect(result.stdout).toContain('✓ Config check passed');
-      expect(read(dir, '.gitignore')).toContain('\n.worktrees/\n');
-      expect(read(dir, '.prettierignore')).toContain('\n.claude/plans\n');
-    });
+    it.each(['.claude/worktrees', '.claude/plans', '.claude/handoff'])(
+      'appends missing lines: %s',
+      (entry) => {
+        const dir = make();
+        writeFileSync(
+          join(dir, '.gitignore'),
+          read(dir, '.gitignore').replace('.worktrees/\n', ''),
+        );
+        writeFileSync(
+          join(dir, '.prettierignore'),
+          read(dir, '.prettierignore').replace(`${entry}\n`, ''),
+        );
+        const result = run(dir, ['check', '--fix']);
+        expect(result.status).toBe(0);
+        expect(result.stdout).toContain('.gitignore: added .worktrees/');
+        expect(result.stdout).toContain(`.prettierignore: added ${entry}`);
+        expect(result.stdout).toContain('✓ Config check passed');
+        expect(read(dir, '.gitignore')).toContain('\n.worktrees/\n');
+        expect(read(dir, '.prettierignore')).toContain(`\n${entry}\n`);
+      },
+    );
 
     it('keeps extra lines', () => {
       const dir = make();
