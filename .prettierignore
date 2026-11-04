@@ -1,3 +1,5 @@
 node_modules
 .worktrees
+.claude/worktrees
+.claude/plans
 test/fixtures/
