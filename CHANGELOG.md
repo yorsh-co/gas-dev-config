@@ -8,6 +8,10 @@
 
 - `npm run test:network` runs CLI tests of `peers sync [--check]` against GitHub; `npm test` skips them unless `GAS_DEV_CONFIG_NETWORK=1`
 
+### Changed
+
+- **Breaking:** requires Node ^22.13.0, ^24.0.0 or >=26.0.0 (was >=20.10.0)
+
 ### Fixed
 
 - Override transitive `minimatch` to `^11.0.1` (GHSA-g3hv-75wg-m249), lifting `brace-expansion` to 5.0.12; see ADR 0005
