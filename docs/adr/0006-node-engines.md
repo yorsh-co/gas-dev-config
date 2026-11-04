@@ -33,8 +33,10 @@ This drops Node 20 and the odd-numbered releases 21, 23 and 25.
 The range is verified by the following check, run from the repository root. It exits non-zero and lists the offending packages when the declared range is not a subset of every direct dependency's `engines.node`:
 
 ```sh
-node -e 'const s=require("semver"),p=require("./package.json"),d=p.engines.node;const bad=Object.keys({...p.dependencies,...p.devDependencies}).flatMap(k=>{try{const e=require("./node_modules/"+k+"/package.json").engines?.node;return e&&!s.subset(d,e)?[k+" ("+e+")"]:[]}catch{return[]}});if(bad.length){console.error("engines "+d+" not within: "+bad.join(", "));process.exit(1)}console.log("OK "+d)'
+node -e 'const s=require("semver"),p=require("./package.json"),d=p.engines.node;const bad=Object.keys({...p.dependencies,...p.devDependencies}).flatMap(k=>{try{const e=require("./node_modules/"+k+"/package.json").engines?.node;return e&&!s.subset(d,e)?[k+" ("+e+")"]:[]}catch{return[k+" (not installed)"]}});if(bad.length){console.error("engines "+d+" not within: "+bad.join(", "));process.exit(1)}console.log("OK "+d)'
 ```
+
+The check needs `semver` resolvable from the repository root (a transitive dependency, not a declared one), so run it after `npm ci`.
 
 Narrowing `engines` is a breaking change for the CLIs (gas-dev-config, gas-dev-bundle, gas-dev-release), because consumers on Node 20.19 or later lose support, so the next release of each must be a major version. It is not a breaking change for the Apps Script libraries, which run on V8 and use `engines` only for their development tooling.
 
