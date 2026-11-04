@@ -18,6 +18,7 @@
 - `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - `gas-dev-config html` inlines a page edited as `.html`, `.css` and TypeScript into one generated `.ts` string constant, so an HtmlService UI ships as a single Apps Script source file
+- `gas-dev-config peers sync` writes the peer libraries' type declarations into `src/internal/` from their tagged releases, so they never drift from hand copies
 - Plain ESM JavaScript, no build step
 
 <a id="gas-dev-tools"></a>
@@ -26,11 +27,11 @@
 
 Three development tools support the gas-\* libraries. None of them is ever pushed to Apps Script.
 
-| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                     |
-| ---------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`) |
-| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                |
-| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                     |
+| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); peer type sync (`peers sync`) |
+| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                                               |
+| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                                                    |
 
 Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead).
 
@@ -575,6 +576,25 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
   - `out` and `name` are unique. Missing entry files, stale or missing generated files, and an `out` absent from `loadOrder` are reported as drift.
   - It requires `loadOrder`.
 - Any of these keys with the `node` preset is an error.
+
+### Peer types
+
+`gas-dev-config peers sync [--check]` keeps `src/internal/<peer>.peer.types.d.ts` in step with the libraries listed in `gasDevConfig.peers`.
+
+- For each peer it lists the `vX.Y.Z` tags of `https://github.com/yorsh-co/<peer>.git`, picks the highest one that satisfies the range, and reads `peer/<peer>.peer.types.d.ts` at that tag. Other tags, such as `dist/vX.Y.Z`, are ignored.
+- The file is written to `src/internal/` byte for byte, except that the ` * @version` line is removed. A peer patch release that leaves the declarations unchanged therefore produces no diff.
+- Every peer is resolved and fetched before anything is written. A missing `peers` key, an invalid range, a range without a matching tag, a tag without the peer file or an unreachable repository is an error (exit 1).
+- `--check` writes nothing and exits 1 if any file is missing or differs.
+- It needs network access and `git`, so it is not part of `npm run check`. Add the scripts to the library:
+
+```json
+{
+  "scripts": {
+    "peers:sync": "gas-dev-config peers sync",
+    "peers:check": "gas-dev-config peers sync --check"
+  }
+}
+```
 
 ### What is checked
 
