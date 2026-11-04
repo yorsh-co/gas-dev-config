@@ -6,6 +6,14 @@
 
 ---
 
+## [2.0.1] - 2026-11-04
+
+### Changed
+
+- Requires `gas-dev-bundle` `^2.0.0` (was `^1.1.0`), used by `gas-test build`
+
+---
+
 ## [2.0.0] - 2026-11-04
 
 ### Added
