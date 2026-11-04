@@ -177,6 +177,122 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
       'scripts.lint is missing; expected: eslint',
     );
   });
+
+  describe('--fix', () => {
+    /**
+     * @param {string} dir
+     * @param {string} name
+     */
+    const read = (dir, name) => readFileSync(join(dir, name), 'utf8');
+    /** @param {string} name */
+    const template = (name) =>
+      readFileSync(join(TEMPLATES, preset, name.slice(1)), 'utf8');
+
+    it('appends missing lines', () => {
+      const dir = make();
+      writeFileSync(
+        join(dir, '.gitignore'),
+        read(dir, '.gitignore').replace('.worktrees/\n', ''),
+      );
+      writeFileSync(
+        join(dir, '.prettierignore'),
+        read(dir, '.prettierignore').replace('.claude/plans\n', ''),
+      );
+      const result = run(dir, ['check', '--fix']);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('.gitignore: added .worktrees/');
+      expect(result.stdout).toContain('.prettierignore: added .claude/plans');
+      expect(result.stdout).toContain('✓ Config check passed');
+      expect(read(dir, '.gitignore')).toContain('\n.worktrees/\n');
+      expect(read(dir, '.prettierignore')).toContain('\n.claude/plans\n');
+    });
+
+    it('keeps extra lines', () => {
+      const dir = make();
+      const entry = '.claude/plans';
+      writeFileSync(
+        join(dir, '.prettierignore'),
+        `# header\ncustom/\n${read(dir, '.prettierignore').replace(`${entry}\n`, '')}`,
+      );
+      expect(run(dir, ['check', '--fix']).status).toBe(0);
+      const text = read(dir, '.prettierignore');
+      expect(text.startsWith('# header\ncustom/\n')).toBe(true);
+      expect(text.endsWith(`${entry}\n`)).toBe(true);
+    });
+
+    it('adds a newline before appending to a file without one', () => {
+      const dir = make();
+      const lines = template('.gitignore').trimEnd().split('\n');
+      const removed = lines.pop();
+      writeFileSync(join(dir, '.gitignore'), lines.join('\n'));
+      const result = run(dir, ['check', '--fix']);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain(`.gitignore: added ${removed}`);
+      expect(read(dir, '.gitignore').endsWith('\n')).toBe(true);
+      const actual = read(dir, '.gitignore').split('\n');
+      for (const line of template('.gitignore').split('\n')) {
+        if (line !== '') expect(actual).toContain(line);
+      }
+    });
+
+    it('appends with CRLF line endings', () => {
+      const dir = make();
+      writeFileSync(
+        join(dir, '.prettierignore'),
+        template('.prettierignore')
+          .replace('.claude/plans\n', '')
+          .replace(/\n/g, '\r\n'),
+      );
+      expect(run(dir, ['check', '--fix']).status).toBe(0);
+      const text = read(dir, '.prettierignore');
+      expect(text).toContain('.claude/plans\r\n');
+      expect(/(?<!\r)\n/.test(text)).toBe(false);
+    });
+
+    it('creates a missing file from the template', () => {
+      const dir = make();
+      rmSync(join(dir, '.prettierignore'));
+      const result = run(dir, ['check', '--fix']);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('.prettierignore: created');
+      expect(read(dir, '.prettierignore')).toBe(template('.prettierignore'));
+    });
+
+    it('is idempotent', () => {
+      const dir = make();
+      writeFileSync(
+        join(dir, '.gitignore'),
+        read(dir, '.gitignore').replace('.worktrees/\n', ''),
+      );
+      rmSync(join(dir, '.prettierignore'));
+      const first = run(dir, ['check', '--fix']);
+      expect(first.status).toBe(0);
+      expect(first.stdout).toContain('.gitignore: added .worktrees/');
+      expect(first.stdout).toContain('.prettierignore: created');
+      const gitignore = read(dir, '.gitignore');
+      const prettierignore = read(dir, '.prettierignore');
+      const second = run(dir, ['check', '--fix']);
+      expect(second.status).toBe(0);
+      expect(second.stdout).toBe('✓ Config check passed\n');
+      expect(read(dir, '.gitignore')).toBe(gitignore);
+      expect(read(dir, '.prettierignore')).toBe(prettierignore);
+    });
+
+    it('exits 1 when other drift remains', () => {
+      const dir = make();
+      writeFileSync(join(dir, '.github', 'dependabot.yml'), 'version: 2\n');
+      writeFileSync(
+        join(dir, '.gitignore'),
+        read(dir, '.gitignore').replace('.worktrees/\n', ''),
+      );
+      const result = run(dir, ['check', '--fix']);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('.gitignore: added .worktrees/');
+      expect(read(dir, '.gitignore')).toContain('.worktrees/');
+      expect(result.stderr).toContain('.github/dependabot.yml');
+      expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
+    });
+  });
 });
 
 describe('check (preset specifics)', () => {
@@ -229,6 +345,18 @@ describe('check (preset specifics)', () => {
     const result = run(dir, ['check']);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('unknown preset "web"');
+  });
+
+  it('writes nothing with --fix when the config is invalid', () => {
+    const dir = createCleanProject('gas', {
+      gasDevConfig: { preset: 'bogus' },
+    });
+    const file = join(dir, '.gitignore');
+    const before = readFileSync(file, 'utf8').replace('.worktrees/\n', '');
+    writeFileSync(file, before);
+    const result = run(dir, ['check', '--fix']);
+    expect(result.status).toBe(1);
+    expect(readFileSync(file, 'utf8')).toBe(before);
   });
 
   it('fails on an unknown gasDevConfig key', () => {
@@ -482,15 +610,22 @@ describe('CLI usage', () => {
   });
 
   it('exits 2 on an unknown option', () => {
-    const result = run(REPO_ROOT, ['check', '--fix']);
+    const result = run(REPO_ROOT, ['check', '--bogus']);
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('Run gas-dev-config --help');
+  });
+
+  it('exits 2 when --fix is used without check', () => {
+    const result = run(REPO_ROOT, ['html', '--fix']);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('--fix is only valid with check.');
   });
 
   it('prints help', () => {
     const result = run(REPO_ROOT, ['--help']);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Usage: gas-dev-config check');
+    expect(result.stdout).toContain('check [--fix]');
     expect(result.stdout).toContain('gas-dev-config gas-test run [--keep]');
   });
 
