@@ -223,9 +223,12 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
     it('adds a newline before appending to a file without one', () => {
       const dir = make();
       const lines = template('.gitignore').trimEnd().split('\n');
-      lines.pop();
+      const removed = lines.pop();
       writeFileSync(join(dir, '.gitignore'), lines.join('\n'));
-      expect(run(dir, ['check', '--fix']).status).toBe(0);
+      const result = run(dir, ['check', '--fix']);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain(`.gitignore: added ${removed}`);
+      expect(read(dir, '.gitignore').endsWith('\n')).toBe(true);
       const actual = read(dir, '.gitignore').split('\n');
       for (const line of template('.gitignore').split('\n')) {
         if (line !== '') expect(actual).toContain(line);
@@ -262,7 +265,10 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
         read(dir, '.gitignore').replace('.worktrees/\n', ''),
       );
       rmSync(join(dir, '.prettierignore'));
-      run(dir, ['check', '--fix']);
+      const first = run(dir, ['check', '--fix']);
+      expect(first.status).toBe(0);
+      expect(first.stdout).toContain('.gitignore: added .worktrees/');
+      expect(first.stdout).toContain('.prettierignore: created');
       const gitignore = read(dir, '.gitignore');
       const prettierignore = read(dir, '.prettierignore');
       const second = run(dir, ['check', '--fix']);
