@@ -11,6 +11,7 @@ import {
 } from './check.js';
 import { GasTestError, runBuild, runRun } from './gas-test.js';
 import { HtmlError, runHtml } from './html.js';
+import { PeersError, runPeers } from './peers.js';
 
 const OPTIONS = /** @type {const} */ ({
   help: { type: 'boolean', short: 'h' },
@@ -25,6 +26,7 @@ const USAGE = `Usage: gas-dev-config check [--fix]
        gas-dev-config gas-test build [--out <file>]
        gas-dev-config gas-test run [--keep]
        gas-dev-config html [--check]
+       gas-dev-config peers sync [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
 standard package.json scripts from the preset templates. Writes only with --fix.
@@ -42,6 +44,10 @@ Commands:
   html             Inline each "html" entry's local stylesheets and scripts
                    (TypeScript is transpiled) into a generated .ts file that
                    declares the page as a string constant
+  peers sync       Write src/internal/<peer>.peer.types.d.ts for each
+                   "peers" entry from the peer's highest release tag that
+                   satisfies its range (without the @version line); needs
+                   network access
 
 Options:
   -h, --help       Show this help
@@ -49,7 +55,8 @@ Options:
   --out <file>     gas-test build: output file
                    (default: node_modules/.cache/gas-dev-config/gas-test.js)
   --keep           gas-test run: keep the temporary project directory
-  --check          html: write nothing; exit 1 when a generated file is stale
+  --check          html, peers sync: write nothing; exit 1 when a generated
+                   file is stale
   --fix            check: append missing template lines to .gitignore and
                    .prettierignore (creating them if absent)
 `;
@@ -100,7 +107,8 @@ export function main(argv) {
   const isRun = command === 'gas-test' && rest.join(' ') === 'run';
   const isCheck = command === 'check' && rest.length === 0;
   const isHtml = command === 'html' && rest.length === 0;
-  if (!isCheck && !isBuild && !isRun && !isHtml) {
+  const isPeers = command === 'peers' && rest.join(' ') === 'sync';
+  if (!isCheck && !isBuild && !isRun && !isHtml && !isPeers) {
     return usageError(`unknown command: ${positionals.join(' ')}.`);
   }
   if (values.out !== undefined && !isBuild) {
@@ -109,8 +117,8 @@ export function main(argv) {
   if (values.keep && !isRun) {
     return usageError('--keep is only valid with gas-test run.');
   }
-  if (values.check && !isHtml) {
-    return usageError('--check is only valid with html.');
+  if (values.check && !isHtml && !isPeers) {
+    return usageError('--check is only valid with html or peers sync.');
   }
   if (values.fix && !isCheck) {
     return usageError('--fix is only valid with check.');
@@ -119,6 +127,10 @@ export function main(argv) {
     if (isHtml) {
       const { html } = loadConfig(process.cwd());
       return runHtml(process.cwd(), html, { check: values.check === true });
+    }
+    if (isPeers) {
+      const { peers } = loadConfig(process.cwd());
+      return runPeers(process.cwd(), peers, { check: values.check === true });
     }
     if (isBuild) return runBuild(process.cwd(), { out: values.out });
     if (isRun) return runRun(process.cwd(), { keep: values.keep === true });
@@ -135,7 +147,8 @@ export function main(argv) {
     if (
       error instanceof CheckError ||
       error instanceof GasTestError ||
-      error instanceof HtmlError
+      error instanceof HtmlError ||
+      error instanceof PeersError
     ) {
       process.stderr.write(`gas-dev-config: ${error.message}\n`);
       return 1;
