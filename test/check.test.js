@@ -116,6 +116,21 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
     expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
   });
 
+  it.each(['.claude/worktrees', '.claude/plans'])(
+    'reports a missing .prettierignore line: %s',
+    (entry) => {
+      const dir = make();
+      const file = join(dir, '.prettierignore');
+      writeFileSync(file, readFileSync(file, 'utf8').replace(`${entry}\n`, ''));
+      const result = run(dir, ['check']);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        `.prettierignore\n  missing line: ${entry}`,
+      );
+      expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
+    },
+  );
+
   it('reports a missing .prettierignore file', () => {
     const dir = make();
     rmSync(join(dir, '.prettierignore'));

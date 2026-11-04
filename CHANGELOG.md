@@ -2,6 +2,19 @@
 
 ---
 
+## [1.7.0] - 2026-11-03
+
+### Added
+
+- ESLint presets ignore `.claude/worktrees/`
+- `.prettierignore` templates list `.claude/worktrees` and `.claude/plans`
+
+### Changed
+
+- `gas-dev-config check` requires both `.claude/worktrees` and `.claude/plans` in a consumer's `.prettierignore`: consumers must add both lines when upgrading
+
+---
+
 ## [1.6.0] - 2026-10-31
 
 ### Added
