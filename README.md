@@ -14,7 +14,7 @@
 - Uses each tool's own extension mechanism (shared Prettier config, tsconfig `extends`, exported ESLint factory) instead of copying files
 - ESLint `gas` preset for Apps Script TypeScript, with a `web` option for browser sources and a `node` preset for plain JavaScript tooling
 - `gas-dev-config check` reports drift of the files that cannot be extended: `.gitignore`, `.prettierignore`, `.github/dependabot.yml` and the standard `package.json` scripts
-- The check is read-only: it never writes to your project
+- The check is read-only unless you pass `--fix`, which only appends missing template lines to `.gitignore` and `.prettierignore`
 - `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - `gas-dev-config html` inlines a page edited as `.html`, `.css` and TypeScript into one generated `.ts` string constant, so an HtmlService UI ships as a single Apps Script source file
@@ -519,15 +519,18 @@ gas-dev-config html [--check]
 Prettier, TypeScript and ESLint are shared through their own extension mechanisms. Four things have none, so `gas-dev-config check` compares them with templates and reports the drift:
 
 ```
-gas-dev-config check
+gas-dev-config check [--fix]
 ```
 
-It reads the project in the current directory and never writes. A passing run prints `✓ Config check passed`; otherwise the drift is listed per file on stderr, followed by `✗ Config check failed: N issue(s) in M file(s)`.
+It reads the project in the current directory and writes nothing unless `--fix` is given. A passing run prints `✓ Config check passed`; otherwise the drift is listed per file on stderr, followed by `✗ Config check failed: N issue(s) in M file(s)`.
 
-| Option         | Description      |
-| -------------- | ---------------- |
-| `-h`, `--help` | Show usage       |
-| `--version`    | Show the version |
+`--fix` appends the template lines missing from `.gitignore` and `.prettierignore`, and creates either file from the template if it does not exist. Existing lines, comments and line endings (LF or CRLF) are kept; missing entries go at the end in template order. Each change is printed on stdout as `<file>: added <entry>` or `<file>: created`. Other drift (dependabot, scripts, `loadOrder`, html) stays report-only, and the exit code reflects the drift remaining afterwards. After upgrading `gas-dev-config`, run `npx gas-dev-config check --fix` to pick up new template lines.
+
+| Option         | Description                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| `--fix`        | `check` only: append missing template lines to `.gitignore` and `.prettierignore` (creating them) |
+| `-h`, `--help` | Show usage                                                                                        |
+| `--version`    | Show the version                                                                                  |
 
 `gas-dev-config html [--check]` is described in [HTML build](#html-build).
 
