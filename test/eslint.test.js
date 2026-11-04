@@ -144,6 +144,14 @@ describe('gasEslint() default preset', () => {
     );
   });
 
+  it('ignores .claude/worktrees/', async () => {
+    expect(
+      await linter.isPathIgnored(
+        join(project.dir, '.claude/worktrees/x/src/lib.ts'),
+      ),
+    ).toBe(true);
+  });
+
   it('reports no errors on the clean fixture', async () => {
     const results = lint(project.dir, 'src', 'test', 'gas-test', 'scripts');
     expect(Object.values(results).flat()).toEqual([]);
@@ -383,6 +391,14 @@ describe("gasEslint({ preset: 'node' })", () => {
     expect(await linter.isPathIgnored(join(project.dir, 'skipped/x.js'))).toBe(
       true,
     );
+  });
+
+  it('ignores .claude/worktrees/', async () => {
+    expect(
+      await linter.isPathIgnored(
+        join(project.dir, '.claude/worktrees/x/index.js'),
+      ),
+    ).toBe(true);
   });
 
   it('reports no errors on the clean fixture and flags seeded violations', async () => {

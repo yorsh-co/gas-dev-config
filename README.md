@@ -194,10 +194,10 @@ Any further arguments are flat configs applied after the preset and before Prett
 - `async` functions and `await` (including `for await`) are errors in `src/` and `gas-test/` Apps Script files, via `no-restricted-syntax`: Apps Script rejects both on push. A `no-restricted-syntax` entry in an extra config for the same files replaces this one, so repeat the selectors (`:function[async=true]`, `AwaitExpression`, `ForOfStatement[await=true]`) there. Web, `test/` and `scripts/` files are unaffected
 - `gas-test/**/*.ts` as Apps Script files (`sourceType: 'script'`, the `test`, `info`, `assert` and `runGasTests` globals, type-aware linting with `./gas-test/tsconfig.json`, unused-variable rules off), only when `gas-test/tsconfig.json` exists in `cwd`; they are not Node test modules
 - `scripts/**/*.js` as Node ES modules
-- `dist/`, `.worktrees/` and `peer/` ignored; `peer/` holds ambient declarations that are outside the tsconfig `include`
+- `dist/`, `.worktrees/`, `.claude/worktrees/` and `peer/` ignored; `peer/` holds ambient declarations that are outside the tsconfig `include`
 - `eslint-config-prettier` last, so formatting rules never conflict with Prettier
 
-The `node` preset lints `**/*.js` as Node ES modules with `@eslint/js` recommended rules, ignores `.worktrees/` and `node_modules/`, and also ends with `eslint-config-prettier`.
+The `node` preset lints `**/*.js` as Node ES modules with `@eslint/js` recommended rules, ignores `.worktrees/`, `.claude/worktrees/` and `node_modules/`, and also ends with `eslint-config-prettier`.
 
 ### Examples
 
@@ -584,10 +584,10 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 
 Required lines per preset:
 
-| File              | `gas`                                   | `node`                         |
-| ----------------- | --------------------------------------- | ------------------------------ |
-| `.gitignore`      | `node_modules/`, `dist/`, `.worktrees/` | `node_modules/`, `.worktrees/` |
-| `.prettierignore` | `node_modules`, `.worktrees`            | `node_modules`, `.worktrees`   |
+| File              | `gas`                                                              | `node`                                                             |
+| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `.gitignore`      | `node_modules/`, `dist/`, `.worktrees/`                            | `node_modules/`, `.worktrees/`                                     |
+| `.prettierignore` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans` |
 
 Required scripts, exact values, for the `gas` preset. They assume `rimraf` and [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) are dev dependencies of the project:
 

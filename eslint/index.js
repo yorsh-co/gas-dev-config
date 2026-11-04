@@ -141,7 +141,14 @@ export function gasEslint(options = {}, ...extra) {
 
   if (preset === 'node') {
     return defineConfig(
-      { ignores: ['.worktrees/**', 'node_modules/**', ...ignores] },
+      {
+        ignores: [
+          '.worktrees/**',
+          '.claude/worktrees/**',
+          'node_modules/**',
+          ...ignores,
+        ],
+      },
       eslint.configs.recommended,
       // Node.js CLI, library and tests — ESM with Node globals.
       {
@@ -163,7 +170,15 @@ export function gasEslint(options = {}, ...extra) {
   return defineConfig(
     // peer/ holds ambient declarations for consumers to copy; it is outside
     // tsconfig's `include`, so project-based linting cannot resolve it.
-    { ignores: ['dist/**', '.worktrees/**', 'peer/**', ...ignores] },
+    {
+      ignores: [
+        'dist/**',
+        '.worktrees/**',
+        '.claude/worktrees/**',
+        'peer/**',
+        ...ignores,
+      ],
+    },
 
     eslint.configs.recommended,
     ...tseslint.configs.recommended,
