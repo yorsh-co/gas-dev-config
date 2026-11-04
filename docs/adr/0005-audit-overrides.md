@@ -24,7 +24,6 @@ Each consumer that installs `@google/clasp` declares the following in `package.j
 }
 ```
 
-- `gaxios` is included only in repositories that install `@google/clasp`. Others carry `minimatch` alone.
 - Each repository's `npm run check` (lint, typecheck, tests) is the compatibility gate for forcing minimatch 11 under eslint and typescript-eslint.
 - zod is not overridden. clasp is a dev-time CLI that validates its own configuration and MCP inputs. Those inputs come from the local developer or their agent on a development machine, not from remote or untrusted users, so the memory-exhaustion path is unlikely to be reachable in practice. This is accepted risk.
 - `npm audit fix --force` is never used. It proposes downgrades such as eslint 4 and clasp 2.5.0.
