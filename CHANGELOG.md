@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [1.9.0] - 2026-11-04
+
 ### Added
 
 - `.prettierignore` templates list `.claude/handoff`
