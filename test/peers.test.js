@@ -84,7 +84,11 @@ function createPeerRepo(root, name) {
     writeFileSync(file, canonical(name, version));
     git(repo, ['add', '-A']);
     git(repo, ['commit', '--quiet', '-m', `release ${version}`]);
-    for (const tag of tags) git(repo, ['tag', tag]);
+    for (const tag of tags) {
+      if (tag === 'v1.1.0')
+        git(repo, ['tag', '-a', tag, '-m', `release ${tag}`]);
+      else git(repo, ['tag', tag]);
+    }
   }
   return repo;
 }
@@ -124,7 +128,9 @@ describe('runPeers', () => {
     expect(readFileSync(path, 'utf8')).toBe(
       stripped(canonical('gas-lock', '1.1.0')),
     );
-    expect(readFileSync(path, 'utf8')).not.toContain('@version');
+    expect(readFileSync(path, 'utf8')).toBe(
+      '/**\n * gas-lock peer types.\n * @license MIT\n */\nexport declare const v1_1_0: string;\n',
+    );
     expect(io.out()).toBe(
       '✓ Synced src/internal/gas-lock.peer.types.d.ts from gas-lock@1.1.0\n',
     );
@@ -265,7 +271,7 @@ describe('runPeers', () => {
     const { project, repository } = setup();
     expect(() =>
       runPeers(project, { nowhere: '^1.0.0' }, { repository }),
-    ).toThrow(PeersError);
+    ).toThrow(/^git ls-remote .* failed: .*\S/s);
   });
 });
 

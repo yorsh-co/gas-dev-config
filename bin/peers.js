@@ -102,10 +102,16 @@ function fetchPeerTypes(name, version, repository) {
     const path = `peer/${name}.peer.types.d.ts`;
     try {
       return git(['show', `FETCH_HEAD:${path}`], dir);
-    } catch {
-      throw new PeersError(
-        `${name}@${version}: ${path} not found at tag v${version}`,
-      );
+    } catch (error) {
+      if (
+        error instanceof PeersError &&
+        /does not exist|exists on disk, but not in/.test(error.message)
+      ) {
+        throw new PeersError(
+          `${name}@${version}: ${path} not found at tag v${version}`,
+        );
+      }
+      throw error;
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
