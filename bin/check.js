@@ -1,5 +1,5 @@
 // @ts-check
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HtmlError, compareModule } from './html.js';
 
@@ -438,6 +438,17 @@ function normalise(text) {
 }
 
 /**
+ * Reads the template of an ignore file.
+ *
+ * @param {string} preset
+ * @param {string} name Ignore file name.
+ * @returns {string}
+ */
+function readIgnoreTemplate(preset, name) {
+  return readFileSync(new URL(`${preset}/${name.slice(1)}`, TEMPLATES), 'utf8');
+}
+
+/**
  * Requires every template entry to appear in the project's ignore file.
  *
  * @param {string} cwd
@@ -448,14 +459,37 @@ function normalise(text) {
 function checkIgnoreFile(cwd, preset, name) {
   const actual = readOptional(join(cwd, name));
   if (actual === undefined) return [{ file: name, message: 'file is missing' }];
-  const template = readFileSync(
-    new URL(`${preset}/${name.slice(1)}`, TEMPLATES),
-    'utf8',
-  );
+  const template = readIgnoreTemplate(preset, name);
   const present = new Set(ignoreEntries(actual));
   return ignoreEntries(template)
     .filter((entry) => !present.has(entry))
     .map((entry) => ({ file: name, message: `missing line: ${entry}` }));
+}
+
+/**
+ * Appends the missing template entries to a project's ignore file, or creates
+ * the file from the template. Existing content is left untouched.
+ *
+ * @param {string} cwd
+ * @param {string} preset
+ * @param {string} name Ignore file name.
+ * @returns {string[]} One message per change.
+ */
+function fixIgnoreFile(cwd, preset, name) {
+  const path = join(cwd, name);
+  const template = readIgnoreTemplate(preset, name);
+  const actual = readOptional(path);
+  if (actual === undefined) {
+    writeFileSync(path, template);
+    return [`${name}: created`];
+  }
+  const present = new Set(ignoreEntries(actual));
+  const missing = ignoreEntries(template).filter((e) => !present.has(e));
+  if (missing.length === 0) return [];
+  const eol = actual.includes('\r\n') ? '\r\n' : '\n';
+  const lead = actual !== '' && !actual.endsWith('\n') ? eol : '';
+  writeFileSync(path, actual + lead + missing.map((e) => e + eol).join(''));
+  return missing.map((entry) => `${name}: added ${entry}`);
 }
 
 /**
@@ -625,6 +659,23 @@ export function checkProject(cwd) {
     ...(loadOrder && html ? checkHtml(cwd, html, loadOrder) : []),
   ];
   return { preset, drift };
+}
+
+/**
+ * Appends the template lines missing from `.gitignore` and `.prettierignore`,
+ * creating either file when absent. The configuration is validated first, so an
+ * invalid one writes nothing.
+ *
+ * @param {string} cwd Project root.
+ * @returns {string[]} One message per change, `.gitignore` first.
+ * @throws {CheckError} When package.json or the `gasDevConfig` field is unusable or invalid.
+ */
+export function fixProject(cwd) {
+  const { preset } = loadConfig(cwd);
+  return [
+    ...fixIgnoreFile(cwd, preset, '.gitignore'),
+    ...fixIgnoreFile(cwd, preset, '.prettierignore'),
+  ];
 }
 
 /**
