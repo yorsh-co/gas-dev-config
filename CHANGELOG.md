@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- `gas-dev-config peers sync [--check]` syncs `src/internal/<peer>.peer.types.d.ts` from the peer's highest satisfying `vX.Y.Z` tag, dropping the `@version` line: `--check` reports drift
+
+### Changed
+
+- `--check` is also valid with `peers sync`
+- `semver` is now a runtime dependency
+
 ---
 
 ## [1.9.0] - 2026-11-04
