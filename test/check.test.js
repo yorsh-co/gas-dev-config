@@ -116,7 +116,7 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
     expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
   });
 
-  it.each(['.claude/worktrees', '.claude/plans'])(
+  it.each(['.claude/worktrees', '.claude/plans', '.claude/handoff'])(
     'reports a missing .prettierignore line: %s',
     (entry) => {
       const dir = make();
