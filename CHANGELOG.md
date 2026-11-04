@@ -2,6 +2,18 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- `.prettierignore` templates list `.claude/handoff`
+
+### Changed
+
+- `gas-dev-config check` requires `.claude/handoff` in a consumer's `.prettierignore`: consumers add it with `check --fix`
+
+---
+
 ## [1.8.0] - 2026-11-03
 
 ### Added
