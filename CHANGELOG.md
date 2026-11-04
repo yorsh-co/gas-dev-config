@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [2.0.0] - 2026-11-04
+
 ### Added
 
 - `npm run test:network` runs CLI tests of `peers sync [--check]` against GitHub; `npm test` skips them unless `GAS_DEV_CONFIG_NETWORK=1`
