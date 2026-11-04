@@ -2,7 +2,13 @@
 // @ts-check
 import { parseArgs } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
-import { CheckError, checkProject, formatReport, loadConfig } from './check.js';
+import {
+  CheckError,
+  checkProject,
+  fixProject,
+  formatReport,
+  loadConfig,
+} from './check.js';
 import { GasTestError, runBuild, runRun } from './gas-test.js';
 import { HtmlError, runHtml } from './html.js';
 
@@ -12,15 +18,16 @@ const OPTIONS = /** @type {const} */ ({
   out: { type: 'string' },
   keep: { type: 'boolean' },
   check: { type: 'boolean' },
+  fix: { type: 'boolean' },
 });
 
-const USAGE = `Usage: gas-dev-config check
+const USAGE = `Usage: gas-dev-config check [--fix]
        gas-dev-config gas-test build [--out <file>]
        gas-dev-config gas-test run [--keep]
        gas-dev-config html [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
-standard package.json scripts from the preset templates. Never writes.
+standard package.json scripts from the preset templates. Writes only with --fix.
 
 The preset is read from package.json: "gasDevConfig": { "preset": "gas" | "node" }
 (default: gas). "loadOrder", "peers", "gasTest" and "html" are also validated.
@@ -43,6 +50,8 @@ Options:
                    (default: node_modules/.cache/gas-dev-config/gas-test.js)
   --keep           gas-test run: keep the temporary project directory
   --check          html: write nothing; exit 1 when a generated file is stale
+  --fix            check: append missing template lines to .gitignore and
+                   .prettierignore (creating them if absent)
 `;
 
 /**
@@ -103,6 +112,9 @@ export function main(argv) {
   if (values.check && !isHtml) {
     return usageError('--check is only valid with html.');
   }
+  if (values.fix && !isCheck) {
+    return usageError('--fix is only valid with check.');
+  }
   try {
     if (isHtml) {
       const { html } = loadConfig(process.cwd());
@@ -110,6 +122,11 @@ export function main(argv) {
     }
     if (isBuild) return runBuild(process.cwd(), { out: values.out });
     if (isRun) return runRun(process.cwd(), { keep: values.keep === true });
+    if (values.fix) {
+      for (const message of fixProject(process.cwd())) {
+        process.stdout.write(`${message}\n`);
+      }
+    }
     const { drift } = checkProject(process.cwd());
     const out = formatReport(drift).join('\n') + '\n';
     (drift.length === 0 ? process.stdout : process.stderr).write(out);

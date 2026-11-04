@@ -2,6 +2,14 @@
 
 ---
 
+## [1.8.0] - 2026-11-03
+
+### Added
+
+- `check --fix` appends missing template lines to `.gitignore` and `.prettierignore`, creating them if absent
+
+---
+
 ## [1.7.0] - 2026-11-03
 
 ### Added
