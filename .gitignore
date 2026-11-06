@@ -1,2 +1,6 @@
 node_modules/
 .worktrees/
+.claude/worktrees/
+.claude/plans/
+.claude/handoff/
+.env
