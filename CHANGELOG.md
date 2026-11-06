@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `gas-dev-config github [--fix]` reports GitHub ruleset drift against the shared `templates/github/rulesets/` templates through `gh`; `--fix` creates missing and updates drifted rulesets and never deletes extras; see [ADR 0009](docs/adr/0009-github-rulesets.md)
+
 ---
 
 ## [2.1.0] - 2026-11-06

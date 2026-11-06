@@ -821,7 +821,9 @@ describe('CLI usage', () => {
   it('exits 2 when --fix is used without check', () => {
     const result = run(REPO_ROOT, ['html', '--fix']);
     expect(result.status).toBe(2);
-    expect(result.stderr).toContain('--fix is only valid with check.');
+    expect(result.stderr).toContain(
+      '--fix is only valid with check or github.',
+    );
   });
 
   it('prints help', () => {
