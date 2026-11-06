@@ -1,6 +1,6 @@
 // @ts-check
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { HtmlError, compareModule } from './html.js';
 
 const PRESETS = ['gas', 'node'];
@@ -675,6 +675,71 @@ export function fixProject(cwd) {
   return [
     ...fixIgnoreFile(cwd, preset, '.gitignore'),
     ...fixIgnoreFile(cwd, preset, '.prettierignore'),
+  ];
+}
+
+/**
+ * Creates `.github/dependabot.yml` from the template when it is absent.
+ *
+ * @param {string} cwd
+ * @param {string} preset
+ * @returns {string[]} One message per change.
+ */
+function createDependabot(cwd, preset) {
+  const file = '.github/dependabot.yml';
+  const path = join(cwd, file);
+  if (existsSync(path)) return [];
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, readFileSync(new URL(`${preset}/${file}`, TEMPLATES)));
+  return [`${file}: created`];
+}
+
+/**
+ * Adds the required scripts missing from package.json, after the existing
+ * ones. Existing scripts are never changed.
+ *
+ * @param {string} cwd
+ * @param {Record<string, unknown>} pkg Parsed package.json.
+ * @param {string} preset
+ * @param {GasTestConfig | undefined} gasTest Configured `gasTest` settings, if any.
+ * @returns {string[]} One message per added script.
+ */
+function addScripts(cwd, pkg, preset, gasTest) {
+  const template = /** @type {ScriptsTemplate} */ (
+    readJson(new URL(`${preset}/scripts.json`, TEMPLATES), 'scripts template')
+  );
+  const required = { ...template.required, ...(gasTest && template.gasTest) };
+  const scripts = isRecord(pkg['scripts']) ? pkg['scripts'] : {};
+  const missing = Object.entries(required).filter(
+    ([name]) => scripts[name] === undefined,
+  );
+  if (missing.length === 0) return [];
+  pkg['scripts'] = { ...scripts, ...Object.fromEntries(missing) };
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  return missing.map(([name]) => `package.json: added scripts.${name}`);
+}
+
+/**
+ * Scaffolds a project: applies the ignore-file fixes, creates
+ * `.github/dependabot.yml` when absent and adds the missing required scripts.
+ * Existing files and scripts are never overwritten. The configuration is
+ * validated first, as is `scripts`, so an invalid one writes nothing.
+ *
+ * @param {string} cwd Project root.
+ * @returns {string[]} One message per change.
+ * @throws {CheckError} When package.json or the `gasDevConfig` field is unusable or invalid.
+ */
+export function initProject(cwd) {
+  const pkg = readPackage(cwd);
+  const { preset, gasTest } = resolveConfig(pkg);
+  if (pkg['scripts'] !== undefined && !isRecord(pkg['scripts'])) {
+    throw new CheckError('package.json: scripts must be an object');
+  }
+  return [
+    ...fixIgnoreFile(cwd, preset, '.gitignore'),
+    ...fixIgnoreFile(cwd, preset, '.prettierignore'),
+    ...createDependabot(cwd, preset),
+    ...addScripts(cwd, pkg, preset, gasTest),
   ];
 }
 

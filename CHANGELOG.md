@@ -6,6 +6,19 @@
 
 ---
 
+## [2.1.0] - 2026-11-06
+
+### Added
+
+- `gas-dev-config init` scaffolds the ignore files, `.github/dependabot.yml` and the missing required scripts without overwriting anything; see [ADR 0008](docs/adr/0008-init-command.md)
+
+### Changed
+
+- Both gitignore presets now require `.claude/worktrees/`, `.claude/plans/`, `.claude/handoff/` and `.env`: `check` reports them until `check --fix` is run; see ADR 0007
+- README lists `gas-dev-deploy` among the `gas-dev-*` tools
+
+---
+
 ## [2.0.1] - 2026-11-04
 
 ### Changed

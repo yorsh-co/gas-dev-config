@@ -1,6 +1,6 @@
 # 3. Claude Code handoff ignore
 
-- Status: Accepted
+- Status: Accepted; gitignore column superseded by [ADR 0007](0007-gitignore-tooling-and-env.md)
 - Date: 2026-11-04
 
 ## Context

@@ -15,6 +15,7 @@
 - ESLint `gas` preset for Apps Script TypeScript, with a `web` option for browser sources and a `node` preset for plain JavaScript tooling
 - `gas-dev-config check` reports drift of the files that cannot be extended: `.gitignore`, `.prettierignore`, `.github/dependabot.yml` and the standard `package.json` scripts
 - The check is read-only unless you pass `--fix`, which only appends missing template lines to `.gitignore` and `.prettierignore`
+- `gas-dev-config init` scaffolds a new project: ignore files, `.github/dependabot.yml` and the missing required scripts, without overwriting anything
 - `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - `gas-dev-config html` inlines a page edited as `.html`, `.css` and TypeScript into one generated `.ts` string constant, so an HtmlService UI ships as a single Apps Script source file
@@ -25,15 +26,16 @@
 
 ## The gas-dev-\* tools
 
-Three development tools support the gas-\* libraries. None of them is ever pushed to Apps Script.
+Four development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
 
 | Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                                                    |
 | ---------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); peer type sync (`peers sync`) |
 | [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                                               |
 | [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                                                    |
+| [`gas-dev-deploy`](https://github.com/yorsh-co/gas-dev-deploy)   | Apps Script projects that deploy a web app          | clasp login and project choice; `.clasp.json` and `appsscript.json` from the `.example.json` templates; push, then a guided manual web-app deployment recorded in `.env`; project-defined steps through `gasDevDeploy.steps`                               |
 
-Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead).
+Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead); a project that deploys a web app adds `gas-dev-deploy`.
 
 The tools are connected by one piece of metadata, declared once in the library:
 
@@ -521,11 +523,14 @@ Prettier, TypeScript and ESLint are shared through their own extension mechanism
 
 ```
 gas-dev-config check [--fix]
+gas-dev-config init
 ```
 
 It reads the project in the current directory and writes nothing unless `--fix` is given. A passing run prints `✓ Config check passed`; otherwise the drift is listed per file on stderr, followed by `✗ Config check failed: N issue(s) in M file(s)`.
 
 `--fix` appends the template lines missing from `.gitignore` and `.prettierignore`, and creates either file from the template if it does not exist. Existing lines, comments and line endings (LF or CRLF) are kept; missing entries go at the end in template order. Each change is printed on stdout as `<file>: added <entry>` or `<file>: created`. Other drift (dependabot, scripts, `loadOrder`, html) stays report-only, and the exit code reflects the drift remaining afterwards. After upgrading `gas-dev-config`, run `npx gas-dev-config check --fix` to pick up new template lines.
+
+`init` scaffolds a new project. It applies the same ignore-file fix as `--fix`, creates `.github/dependabot.yml` from the template when the file is absent, and adds the required scripts that are missing (plus the `gasTest` ones when `gasTest` is configured) at the end of `scripts`, in template order. It never overwrites or changes an existing file or script, and a project that is already complete is left untouched. Scripts that only have to be present (`build`, `build:watch` and `typecheck` on `gas`) have no template value, so they stay manual and `check` keeps reporting them. `package.json` and `gasDevConfig` are validated first, so an invalid config writes nothing. Each change is printed on stdout as `<file>: created`, `<file>: added <entry>` or `package.json: added scripts.<name>`, followed by the normal check report; the exit code reflects the drift remaining afterwards.
 
 | Option         | Description                                                                                       |
 | -------------- | ------------------------------------------------------------------------------------------------- |
@@ -607,10 +612,10 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 
 Required lines per preset:
 
-| File              | `gas`                                                                                 | `node`                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `.gitignore`      | `node_modules/`, `dist/`, `.worktrees/`                                               | `node_modules/`, `.worktrees/`                                                        |
-| `.prettierignore` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff` |
+| File              | `gas`                                                                                                       | `node`                                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `.gitignore`      | `node_modules/`, `dist/`, `.worktrees/`, `.claude/worktrees/`, `.claude/plans/`, `.claude/handoff/`, `.env` | `node_modules/`, `.worktrees/`, `.claude/worktrees/`, `.claude/plans/`, `.claude/handoff/`, `.env` |
+| `.prettierignore` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff`                       | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff`              |
 
 Required scripts, exact values, for the `gas` preset. They assume `rimraf` and [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) are dev dependencies of the project:
 
@@ -661,9 +666,9 @@ updates:
 3. Replace the options of `tsconfig.json` and `tsconfig.test.json` with an `extends` of the matching preset, keeping `rootDir`, `outDir` and `include` local (see [TypeScript](#typescript)).
 4. Replace `eslint.config.js` with `gasEslint(...)` (see [ESLint](#eslint)).
 5. Remove `@eslint/js`, `typescript-eslint`, `eslint-config-prettier` and `globals` from `devDependencies`.
-6. Add `.github/dependabot.yml` as shown in [Dependabot](#dependabot).
+6. Run `npx gas-dev-config init` to add `.github/dependabot.yml`, the ignore lines and the missing required scripts.
 7. For plain JavaScript tooling, add `"gasDevConfig": { "preset": "node" }` to `package.json`.
-8. Add `gas-dev-config check` to the `check` script and align the other scripts, `.gitignore` and `.prettierignore` with what the check reports.
+8. Add `gas-dev-config check` to the `check` script (if `init` added it, this is already done) and align the scripts `init` did not change with what the check reports.
 9. Run `npm install`.
 10. Run `npm run check`. It must pass with no source changes: `prettier --check`, `eslint` and `tsc` are clean.
 

@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -116,6 +117,19 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
     expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
   });
 
+  it.each(['.claude/worktrees/', '.claude/plans/', '.claude/handoff/', '.env'])(
+    'reports a missing .gitignore line: %s',
+    (entry) => {
+      const dir = make();
+      const file = join(dir, '.gitignore');
+      writeFileSync(file, readFileSync(file, 'utf8').replace(`${entry}\n`, ''));
+      const result = run(dir, ['check']);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(`.gitignore\n  missing line: ${entry}`);
+      expect(result.stderr).toContain('1 issue(s) in 1 file(s)');
+    },
+  );
+
   it.each(['.claude/worktrees', '.claude/plans', '.claude/handoff'])(
     'reports a missing .prettierignore line: %s',
     (entry) => {
@@ -209,6 +223,18 @@ describe.each(['gas', 'node'])('check (%s preset)', (preset) => {
         expect(read(dir, '.prettierignore')).toContain(`\n${entry}\n`);
       },
     );
+
+    it('appends a missing .env to .gitignore', () => {
+      const dir = make();
+      writeFileSync(
+        join(dir, '.gitignore'),
+        read(dir, '.gitignore').replace('.env\n', ''),
+      );
+      const result = run(dir, ['check', '--fix']);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('.gitignore: added .env');
+      expect(read(dir, '.gitignore')).toContain('\n.env\n');
+    });
 
     it('keeps extra lines', () => {
       const dir = make();
@@ -596,6 +622,180 @@ describe('check (gasTest)', () => {
     expect(result.stderr).toContain(
       '"gasDevConfig.gasTest" requires the gas preset',
     );
+  });
+});
+
+describe('init', () => {
+  const tpl = (/** @type {string} */ preset, /** @type {string} */ file) =>
+    readFileSync(join(TEMPLATES, preset, file), 'utf8');
+  const scriptsOf = (/** @type {string} */ preset) =>
+    JSON.parse(tpl(preset, 'scripts.json'));
+
+  /**
+   * @param {'gas' | 'node'} preset
+   * @param {Record<string, unknown>} [extra] Extra package.json fields.
+   * @returns {string} Project directory containing only package.json.
+   */
+  function createEmptyProject(preset, extra = {}) {
+    const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-init-'));
+    dirs.push(dir);
+    writePackage(dir, {
+      name: 'consumer',
+      ...(preset === 'node' && { gasDevConfig: { preset } }),
+      ...extra,
+    });
+    return dir;
+  }
+
+  describe.each(['gas', 'node'])('%s preset', (preset) => {
+    const p = /** @type {'gas' | 'node'} */ (preset);
+
+    it('creates the files and adds every required script', () => {
+      const dir = createEmptyProject(p);
+      const result = run(dir, ['init']);
+      for (const [file, template] of /** @type {[string, string][]} */ ([
+        ['.gitignore', 'gitignore'],
+        ['.prettierignore', 'prettierignore'],
+        ['.github/dependabot.yml', '.github/dependabot.yml'],
+      ])) {
+        expect(readFileSync(join(dir, file), 'utf8')).toBe(
+          tpl(preset, template),
+        );
+        expect(result.stdout).toContain(`${file}: created`);
+      }
+      const { required, present } = scriptsOf(preset);
+      const pkg = readPackage(dir);
+      expect(pkg.scripts).toEqual(required);
+      expect(Object.keys(pkg.scripts)).toEqual(Object.keys(required));
+      for (const name of Object.keys(required)) {
+        expect(result.stdout).toContain(`package.json: added scripts.${name}`);
+      }
+      expect(readFileSync(join(dir, 'package.json'), 'utf8')).toMatch(/\n$/);
+      if (p === 'node') {
+        expect(result.status).toBe(0);
+        expect(result.stdout.trimEnd().endsWith('✓ Config check passed')).toBe(
+          true,
+        );
+      } else {
+        expect(result.status).toBe(1);
+        const reported = result.stderr
+          .split('\n')
+          .filter((l) => l.startsWith('  '))
+          .map((l) => l.trim());
+        expect(reported).toEqual(
+          present.map((/** @type {string} */ n) => `scripts.${n} is missing`),
+        );
+      }
+    });
+
+    it('keeps differing scripts and appends missing ones in order', () => {
+      const dir = createEmptyProject(p, { scripts: { test: 'jest' } });
+      const result = run(dir, ['init']);
+      const { required } = scriptsOf(preset);
+      const names = Object.keys(required);
+      const pkg = readPackage(dir);
+      expect(pkg.scripts.test).toBe('jest');
+      expect(Object.keys(pkg.scripts)).toEqual([
+        'test',
+        ...names.filter((n) => n !== 'test'),
+      ]);
+      expect(result.stdout).not.toContain('added scripts.test\n');
+      expect(result.stderr).toContain(
+        `scripts.test differs; expected: ${required.test}; found: "jest"`,
+      );
+    });
+
+    it('does not touch a differing dependabot.yml', () => {
+      const dir = createEmptyProject(p);
+      mkdirSync(join(dir, '.github'));
+      const file = join(dir, '.github', 'dependabot.yml');
+      writeFileSync(file, 'version: 2\n');
+      const result = run(dir, ['init']);
+      expect(readFileSync(file, 'utf8')).toBe('version: 2\n');
+      expect(result.stdout).not.toContain('dependabot.yml: created');
+      expect(result.stderr).toContain(
+        `differs from the template templates/${preset}/.github/dependabot.yml`,
+      );
+    });
+
+    it('appends missing ignore lines', () => {
+      const dir = createEmptyProject(p);
+      writeFileSync(join(dir, '.gitignore'), 'dist/\n');
+      const result = run(dir, ['init']);
+      expect(result.stdout).toContain('.gitignore: added node_modules/');
+      expect(readFileSync(join(dir, '.gitignore'), 'utf8')).toMatch(
+        /^dist\/\n/,
+      );
+    });
+
+    it('prints no changes and leaves package.json alone on a second run', () => {
+      const dir = createEmptyProject(p);
+      run(dir, ['init']);
+      const before = readFileSync(join(dir, 'package.json'), 'utf8');
+      writeFileSync(join(dir, 'package.json'), before.replace(/\n$/, ''));
+      const result = run(dir, ['init']);
+      expect(result.stdout).not.toMatch(/created|added/);
+      expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(
+        before.replace(/\n$/, ''),
+      );
+    });
+
+    it('writes nothing when the config is invalid', () => {
+      const dir = createEmptyProject(p, { gasDevConfig: { preset: 'bogus' } });
+      const before = readFileSync(join(dir, 'package.json'), 'utf8');
+      const result = run(dir, ['init']);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('unknown preset "bogus"');
+      expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before);
+      expect(existsSync(join(dir, '.gitignore'))).toBe(false);
+      expect(existsSync(join(dir, '.github'))).toBe(false);
+    });
+  });
+
+  it('adds the gasTest scripts when gasTest is configured', () => {
+    const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
+    const dir = createEmptyProject('gas', {
+      gasDevConfig: { loadOrder: ['a.ts'], gasTest: { scopes } },
+    });
+    const result = run(dir, ['init']);
+    const { gasTest } = scriptsOf('gas');
+    const pkg = readPackage(dir);
+    for (const [name, value] of Object.entries(gasTest)) {
+      expect(pkg.scripts[name]).toBe(value);
+      expect(result.stdout).toContain(`package.json: added scripts.${name}`);
+    }
+  });
+
+  it('does not add the gasTest scripts without gasTest', () => {
+    const dir = createEmptyProject('gas');
+    run(dir, ['init']);
+    const scripts = readPackage(dir).scripts;
+    expect(scripts).not.toHaveProperty('test:gas');
+    expect(scripts).not.toHaveProperty('test:gas:build');
+  });
+
+  it.each([
+    ['"x"', 'x'],
+    ['an array', ['x']],
+  ])('exits 1 and writes nothing when scripts is %s', (_label, scripts) => {
+    const dir = createEmptyProject('node', { scripts });
+    const before = readFileSync(join(dir, 'package.json'), 'utf8');
+    const result = run(dir, ['init']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('package.json: scripts must be an object');
+    expect(existsSync(join(dir, '.gitignore'))).toBe(false);
+    expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before);
+  });
+
+  it.each([
+    ['--fix', '--fix is only valid with check'],
+    ['extra', 'unknown command: init extra'],
+  ])('exits 2 on init %s', (arg, message) => {
+    const dir = createEmptyProject('node');
+    const result = run(dir, ['init', arg]);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain(message);
+    expect(existsSync(join(dir, '.gitignore'))).toBe(false);
   });
 });
 
