@@ -27,11 +27,26 @@ if (a === 'repo' && b === 'view') {
   process.stdout.write('yorsh-co/demo\\n');
   process.exit(0);
 }
+if (a === 'api' && args.includes('-X')) {
+  if (state.write === 'put-403' && args.includes('PUT')) {
+    process.stderr.write('gh: Forbidden (HTTP 403)\\n');
+    process.exit(1);
+  }
+  if (state.write === '422') {
+    process.stderr.write('gh: Validation Failed (HTTP 422)\\n');
+    process.exit(1);
+  }
+  if (state.write === '403') {
+    process.stderr.write('gh: Forbidden (HTTP 403)\\n');
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (a === 'api' && args.length === 2) {
   const path = b.replace('repos/yorsh-co/demo/rulesets', '');
-  if (path === '?per_page=100') {
-    const list = state.rulesets.map(({ id, name, target, enforcement }) => ({
-      id, name, target, enforcement,
+  if (path === '?per_page=100&includes_parents=false') {
+    const list = state.rulesets.map(({ id, name, target, enforcement, source_type }) => ({
+      id, name, target, enforcement, source_type,
     }));
     process.stdout.write(JSON.stringify(list));
     process.exit(0);
@@ -106,7 +121,7 @@ function inSync() {
   return loadTemplates().map((t, i) => ({ id: i + 1, ...t }));
 }
 
-/** @param {{ args: string[] }[]} calls */
+/** @param {{ args: string[], stdin?: string }[]} calls */
 function writes(calls) {
   return calls.filter((c) => c.args.includes('-X'));
 }
@@ -146,6 +161,16 @@ describe('gas-dev-config github', () => {
     expect(runGithub({ auth: true, rulesets }).status).toBe(0);
   });
 
+  it('ignores org-level rulesets', () => {
+    const rulesets = [
+      { ...inSync()[0], id: 50, source_type: 'Organization' },
+      ...inSync().slice(1),
+    ];
+    const result = runGithub({ auth: true, rulesets });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('ruleset branches: missing');
+  });
+
   it('warns about an extra ruleset without failing', () => {
     const rulesets = [...inSync(), { id: 9, name: 'custom', target: 'branch' }];
     const result = runGithub({ auth: true, rulesets });
@@ -181,6 +206,124 @@ describe('gas-dev-config github', () => {
     expect(result.status).toBe(2);
     expect(result.stderr).toContain(message);
     expect(result.calls).toEqual([]);
+  });
+});
+
+describe('gas-dev-config github --fix', () => {
+  const fix = ['github', '--fix'];
+
+  it('POSTs a missing ruleset with the template body', () => {
+    const [branches] = loadTemplates();
+    const result = runGithub(
+      { auth: true, rulesets: inSync().slice(1), write: 'ok' },
+      fix,
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('created ruleset branches');
+    const sent = /** @type {{ args: string[], stdin: string }[]} */ (
+      writes(result.calls)
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.args).toEqual([
+      'api',
+      '-X',
+      'POST',
+      'repos/yorsh-co/demo/rulesets',
+      '--input',
+      '-',
+    ]);
+    expect(JSON.parse(sent[0]?.stdin ?? '')).toEqual(branches);
+  });
+
+  it('PUTs a drifted ruleset to its id', () => {
+    const rulesets = inSync();
+    rulesets[1] = {
+      ...inSync()[1],
+      id: 42,
+      name: 'tags',
+      enforcement: 'disabled',
+    };
+    const result = runGithub({ auth: true, rulesets, write: 'ok' }, fix);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('updated ruleset tags');
+    const sent = /** @type {{ args: string[], stdin: string }[]} */ (
+      writes(result.calls)
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.args.slice(1, 4)).toEqual([
+      '-X',
+      'PUT',
+      'repos/yorsh-co/demo/rulesets/42',
+    ]);
+    expect(JSON.parse(sent[0]?.stdin ?? '')).toEqual(loadTemplates()[1]);
+  });
+
+  it('writes nothing when in sync', () => {
+    const result = runGithub(
+      { auth: true, rulesets: inSync(), write: 'ok' },
+      fix,
+    );
+    expect(result.status).toBe(0);
+    expect(writes(result.calls)).toEqual([]);
+  });
+
+  it('leaves an extra ruleset alone', () => {
+    const rulesets = [
+      ...inSync().slice(1),
+      { id: 9, name: 'custom', target: 'branch' },
+    ];
+    const result = runGithub({ auth: true, rulesets, write: 'ok' }, fix);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('! ruleset custom');
+    const sent = writes(result.calls);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.args[3]).toBe('repos/yorsh-co/demo/rulesets');
+    expect(sent[0]?.args[2]).toBe('POST');
+    expect(
+      sent.some((c) =>
+        c.args.some((/** @type {string} */ a) => a.includes('rulesets/9')),
+      ),
+    ).toBe(false);
+    expect(result.calls.some((c) => c.args.includes('DELETE'))).toBe(false);
+  });
+
+  it('names the repo and in-sync rulesets in fix output', () => {
+    const result = runGithub(
+      { auth: true, rulesets: inSync().slice(1), write: 'ok' },
+      fix,
+    );
+    expect(result.stdout).toContain('GitHub rulesets of yorsh-co/demo');
+    expect(result.stdout).toContain('✓ ruleset tags');
+  });
+
+  it('exits 1 and shows the gh output on a 422', () => {
+    const result = runGithub({ auth: true, rulesets: [], write: '422' }, fix);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('HTTP 422');
+  });
+
+  it('reports a failed PUT after a successful POST', () => {
+    const rulesets = inSync().slice(1);
+    rulesets[0] = {
+      ...inSync()[1],
+      id: 42,
+      name: 'tags',
+      enforcement: 'disabled',
+    };
+    const result = runGithub({ auth: true, rulesets, write: 'put-403' }, fix);
+    expect(result.status).toBe(1);
+    const methods = writes(result.calls).map((c) => c.args[2]);
+    expect(methods).toEqual(['POST', 'PUT']);
+    expect(result.stderr).toContain('admin rights on the repository');
+  });
+
+  it('exits 1 with an admin-rights message on 403', () => {
+    const result = runGithub({ auth: true, rulesets: [], write: '403' }, fix);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      'cannot write rulesets on yorsh-co/demo: admin rights on the repository are needed (HTTP 403).',
+    );
+    expect(writes(result.calls)).toHaveLength(1);
   });
 });
 

@@ -110,11 +110,19 @@ export function loadTemplates() {
  */
 function readRulesets(repo) {
   const list = JSON.parse(
-    ghStep(['api', `repos/${repo}/rulesets?per_page=100`]),
+    ghStep([
+      'api',
+      `repos/${repo}/rulesets?per_page=100&includes_parents=false`,
+    ]),
   );
-  return list.map((/** @type {{ id: number }} */ item) =>
-    JSON.parse(ghStep(['api', `repos/${repo}/rulesets/${item.id}`])),
-  );
+  return list
+    .filter(
+      (/** @type {{ source_type?: string }} */ item) =>
+        item.source_type === undefined || item.source_type === 'Repository',
+    )
+    .map((/** @type {{ id: number }} */ item) =>
+      JSON.parse(ghStep(['api', `repos/${repo}/rulesets/${item.id}`])),
+    );
 }
 
 /**
@@ -221,17 +229,71 @@ export function formatGithubReport(repo, result) {
 }
 
 /**
- * Reports drift of the repository's GitHub rulesets from the templates.
+ * Sends a template to GitHub with POST (create) or PUT (update).
+ *
+ * @param {string} repo `owner/name`.
+ * @param {'POST' | 'PUT'} method
+ * @param {string} path Endpoint below `repos/<repo>/`.
+ * @param {Ruleset} template Request body.
+ * @throws {GithubError} When the write fails.
+ */
+function writeRuleset(repo, method, path, template) {
+  const args = ['api', '-X', method, `repos/${repo}/${path}`, '--input', '-'];
+  const result = gh(args, JSON.stringify(template));
+  if (result.status === 0) return;
+  const output = `${result.stdout}${result.stderr}`.trim();
+  throw new GithubError(
+    /HTTP 403/.test(output)
+      ? `cannot write rulesets on ${repo}: admin rights on the repository are needed (HTTP 403).`
+      : `gh api ${method} failed (exit ${result.status}):\n${output}`,
+  );
+}
+
+/**
+ * Creates the missing rulesets and updates the drifted ones. Extra rulesets
+ * are never touched.
+ *
+ * @param {string} repo `owner/name`.
+ * @param {RulesetComparison} result
+ * @throws {GithubError} At the first failed write.
+ */
+function applyTemplates(repo, { missing, drifted }) {
+  for (const template of missing) {
+    writeRuleset(repo, 'POST', 'rulesets', template);
+    process.stdout.write(`  created ruleset ${template.name}\n`);
+  }
+  for (const { template, id } of drifted) {
+    writeRuleset(repo, 'PUT', `rulesets/${id}`, template);
+    process.stdout.write(`  updated ruleset ${template.name}\n`);
+  }
+}
+
+/**
+ * Reports drift of the repository's GitHub rulesets from the templates and,
+ * with `fix`, creates or updates them.
  *
  * @param {{ fix: boolean }} options
- * @returns {number} 0 when the rulesets match, 1 on drift.
- * @throws {GithubError} When gh is missing, unauthenticated or fails.
+ * @returns {number} 0 when the rulesets match or were fixed, 1 on drift.
+ * @throws {GithubError} When gh is missing, unauthenticated or a call fails.
  */
 export function runGithub({ fix }) {
-  void fix;
   const repo = resolveRepo();
   const result = compareRulesets(loadTemplates(), readRulesets(repo));
   const clean = result.missing.length + result.drifted.length === 0;
+  if (fix && !clean) {
+    process.stdout.write(`GitHub rulesets of ${repo}\n`);
+    for (const name of result.inSync) {
+      process.stdout.write(`  ✓ ruleset ${name}\n`);
+    }
+    applyTemplates(repo, result);
+    for (const name of result.extra) {
+      process.stdout.write(
+        `  ! ruleset ${name}: not in the template (left unchanged)\n`,
+      );
+    }
+    process.stdout.write('✓ GitHub rulesets now match the template\n');
+    return 0;
+  }
   const out = formatGithubReport(repo, result).join('\n') + '\n';
   (clean ? process.stdout : process.stderr).write(out);
   return clean ? 0 : 1;
