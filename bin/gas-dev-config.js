@@ -7,6 +7,7 @@ import {
   checkProject,
   fixProject,
   formatReport,
+  initProject,
   loadConfig,
 } from './check.js';
 import { GasTestError, runBuild, runRun } from './gas-test.js';
@@ -23,6 +24,7 @@ const OPTIONS = /** @type {const} */ ({
 });
 
 const USAGE = `Usage: gas-dev-config check [--fix]
+       gas-dev-config init
        gas-dev-config gas-test build [--out <file>]
        gas-dev-config gas-test run [--keep]
        gas-dev-config html [--check]
@@ -30,12 +32,17 @@ const USAGE = `Usage: gas-dev-config check [--fix]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
 standard package.json scripts from the preset templates. Writes only with --fix.
+init scaffolds a new project: it creates or completes those ignore files, creates
+.github/dependabot.yml when absent and adds the missing required scripts. It never
+overwrites an existing file or script, then prints the check report.
 
 The preset is read from package.json: "gasDevConfig": { "preset": "gas" | "node" }
 (default: gas). "loadOrder", "peers", "gasTest" and "html" are also validated.
 
 Commands:
   check            Compare the project in the current directory with the templates
+  init             Create the ignore files, .github/dependabot.yml and the
+                   required package.json scripts that are missing
   gas-test build   Build one self-contained script (peers, library, test runtime
                    and gas-test/*.ts) to paste into the Apps Script editor
   gas-test run     Push that script to the dedicated test project with clasp
@@ -106,9 +113,10 @@ export function main(argv) {
   const isBuild = command === 'gas-test' && rest.join(' ') === 'build';
   const isRun = command === 'gas-test' && rest.join(' ') === 'run';
   const isCheck = command === 'check' && rest.length === 0;
+  const isInit = command === 'init' && rest.length === 0;
   const isHtml = command === 'html' && rest.length === 0;
   const isPeers = command === 'peers' && rest.join(' ') === 'sync';
-  if (!isCheck && !isBuild && !isRun && !isHtml && !isPeers) {
+  if (!isCheck && !isInit && !isBuild && !isRun && !isHtml && !isPeers) {
     return usageError(`unknown command: ${positionals.join(' ')}.`);
   }
   if (values.out !== undefined && !isBuild) {
@@ -134,8 +142,9 @@ export function main(argv) {
     }
     if (isBuild) return runBuild(process.cwd(), { out: values.out });
     if (isRun) return runRun(process.cwd(), { keep: values.keep === true });
-    if (values.fix) {
-      for (const message of fixProject(process.cwd())) {
+    if (isInit || values.fix) {
+      const apply = isInit ? initProject : fixProject;
+      for (const message of apply(process.cwd())) {
         process.stdout.write(`${message}\n`);
       }
     }
