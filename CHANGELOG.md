@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `gas-dev-config init` scaffolds the ignore files, `.github/dependabot.yml` and the missing required scripts without overwriting anything; see [ADR 0008](docs/adr/0008-init-command.md)
+
 ---
 
 ## [2.0.1] - 2026-11-04
