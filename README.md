@@ -15,6 +15,7 @@
 - ESLint `gas` preset for Apps Script TypeScript, with a `web` option for browser sources and a `node` preset for plain JavaScript tooling
 - `gas-dev-config check` reports drift of the files that cannot be extended: `.gitignore`, `.prettierignore`, `.github/dependabot.yml` and the standard `package.json` scripts
 - The check is read-only unless you pass `--fix`, which only appends missing template lines to `.gitignore` and `.prettierignore`
+- `gas-dev-config init` scaffolds a new project: ignore files, `.github/dependabot.yml` and the missing required scripts, without overwriting anything
 - `gas-dev-config/test` loads Apps Script sources, which are global-scope scripts without exports, into a fresh `node:vm` context for Vitest suites
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - `gas-dev-config html` inlines a page edited as `.html`, `.css` and TypeScript into one generated `.ts` string constant, so an HtmlService UI ships as a single Apps Script source file
@@ -521,11 +522,14 @@ Prettier, TypeScript and ESLint are shared through their own extension mechanism
 
 ```
 gas-dev-config check [--fix]
+gas-dev-config init
 ```
 
 It reads the project in the current directory and writes nothing unless `--fix` is given. A passing run prints `✓ Config check passed`; otherwise the drift is listed per file on stderr, followed by `✗ Config check failed: N issue(s) in M file(s)`.
 
 `--fix` appends the template lines missing from `.gitignore` and `.prettierignore`, and creates either file from the template if it does not exist. Existing lines, comments and line endings (LF or CRLF) are kept; missing entries go at the end in template order. Each change is printed on stdout as `<file>: added <entry>` or `<file>: created`. Other drift (dependabot, scripts, `loadOrder`, html) stays report-only, and the exit code reflects the drift remaining afterwards. After upgrading `gas-dev-config`, run `npx gas-dev-config check --fix` to pick up new template lines.
+
+`init` scaffolds a new project. It applies the same ignore-file fix as `--fix`, creates `.github/dependabot.yml` from the template when the file is absent, and adds the required scripts that are missing (plus the `gasTest` ones when `gasTest` is configured) at the end of `scripts`, in template order. It never overwrites or changes an existing file or script, and a project that is already complete is left untouched. Scripts that only have to be present (`build`, `build:watch` and `typecheck` on `gas`) have no template value, so they stay manual and `check` keeps reporting them. `package.json` and `gasDevConfig` are validated first, so an invalid config writes nothing. Each change is printed on stdout as `<file>: created`, `<file>: added <entry>` or `package.json: added scripts.<name>`, followed by the normal check report; the exit code reflects the drift remaining afterwards.
 
 | Option         | Description                                                                                       |
 | -------------- | ------------------------------------------------------------------------------------------------- |
@@ -661,9 +665,9 @@ updates:
 3. Replace the options of `tsconfig.json` and `tsconfig.test.json` with an `extends` of the matching preset, keeping `rootDir`, `outDir` and `include` local (see [TypeScript](#typescript)).
 4. Replace `eslint.config.js` with `gasEslint(...)` (see [ESLint](#eslint)).
 5. Remove `@eslint/js`, `typescript-eslint`, `eslint-config-prettier` and `globals` from `devDependencies`.
-6. Add `.github/dependabot.yml` as shown in [Dependabot](#dependabot).
+6. Run `npx gas-dev-config init` to add `.github/dependabot.yml`, the ignore lines and the missing required scripts.
 7. For plain JavaScript tooling, add `"gasDevConfig": { "preset": "node" }` to `package.json`.
-8. Add `gas-dev-config check` to the `check` script and align the other scripts, `.gitignore` and `.prettierignore` with what the check reports.
+8. Add `gas-dev-config check` to the `check` script (if `init` added it, this is already done) and align the scripts `init` did not change with what the check reports.
 9. Run `npm install`.
 10. Run `npm run check`. It must pass with no source changes: `prettier --check`, `eslint` and `tsc` are clean.
 
