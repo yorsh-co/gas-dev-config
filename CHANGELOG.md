@@ -11,6 +11,7 @@
 ### Changed
 
 - Both gitignore presets now require `.claude/worktrees/`, `.claude/plans/`, `.claude/handoff/` and `.env`: `check` reports them until `check --fix` is run; see ADR 0007
+- README lists `gas-dev-deploy` among the `gas-dev-*` tools
 
 ---
 
