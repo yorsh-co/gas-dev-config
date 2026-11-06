@@ -607,10 +607,10 @@ The preset is read from `package.json` and defaults to `gas`. Set it to `node` f
 
 Required lines per preset:
 
-| File              | `gas`                                                                                 | `node`                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `.gitignore`      | `node_modules/`, `dist/`, `.worktrees/`                                               | `node_modules/`, `.worktrees/`                                                        |
-| `.prettierignore` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff` |
+| File              | `gas`                                                                                                       | `node`                                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `.gitignore`      | `node_modules/`, `dist/`, `.worktrees/`, `.claude/worktrees/`, `.claude/plans/`, `.claude/handoff/`, `.env` | `node_modules/`, `.worktrees/`, `.claude/worktrees/`, `.claude/plans/`, `.claude/handoff/`, `.env` |
+| `.prettierignore` | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff`                       | `node_modules`, `.worktrees`, `.claude/worktrees`, `.claude/plans`, `.claude/handoff`              |
 
 Required scripts, exact values, for the `gas` preset. They assume `rimraf` and [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) are dev dependencies of the project:
 
