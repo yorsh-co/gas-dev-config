@@ -744,13 +744,32 @@ describe('init', () => {
   it('does not add the gasTest scripts without gasTest', () => {
     const dir = createEmptyProject('gas');
     run(dir, ['init']);
-    expect(readPackage(dir).scripts).not.toHaveProperty('test:gas');
+    const scripts = readPackage(dir).scripts;
+    expect(scripts).not.toHaveProperty('test:gas');
+    expect(scripts).not.toHaveProperty('test:gas:build');
   });
 
-  it.each([['--fix'], ['extra']])('exits 2 on init %s', (arg) => {
+  it.each([
+    ['"x"', 'x'],
+    ['an array', ['x']],
+  ])('exits 1 and writes nothing when scripts is %s', (_label, scripts) => {
+    const dir = createEmptyProject('node', { scripts });
+    const before = readFileSync(join(dir, 'package.json'), 'utf8');
+    const result = run(dir, ['init']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('package.json: scripts must be an object');
+    expect(existsSync(join(dir, '.gitignore'))).toBe(false);
+    expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before);
+  });
+
+  it.each([
+    ['--fix', '--fix is only valid with check'],
+    ['extra', 'unknown command: init extra'],
+  ])('exits 2 on init %s', (arg, message) => {
     const dir = createEmptyProject('node');
     const result = run(dir, ['init', arg]);
     expect(result.status).toBe(2);
+    expect(result.stderr).toContain(message);
     expect(existsSync(join(dir, '.gitignore'))).toBe(false);
   });
 });

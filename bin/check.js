@@ -723,7 +723,7 @@ function addScripts(cwd, pkg, preset, gasTest) {
  * Scaffolds a project: applies the ignore-file fixes, creates
  * `.github/dependabot.yml` when absent and adds the missing required scripts.
  * Existing files and scripts are never overwritten. The configuration is
- * validated first, so an invalid one writes nothing.
+ * validated first, as is `scripts`, so an invalid one writes nothing.
  *
  * @param {string} cwd Project root.
  * @returns {string[]} One message per change.
@@ -732,6 +732,9 @@ function addScripts(cwd, pkg, preset, gasTest) {
 export function initProject(cwd) {
   const pkg = readPackage(cwd);
   const { preset, gasTest } = resolveConfig(pkg);
+  if (pkg['scripts'] !== undefined && !isRecord(pkg['scripts'])) {
+    throw new CheckError('package.json: scripts must be an object');
+  }
   return [
     ...fixIgnoreFile(cwd, preset, '.gitignore'),
     ...fixIgnoreFile(cwd, preset, '.prettierignore'),
