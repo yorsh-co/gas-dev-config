@@ -28,12 +28,12 @@
 
 Four development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
 
-| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); peer type sync (`peers sync`) |
-| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                                               |
-| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                                                    |
-| [`gas-dev-deploy`](https://github.com/yorsh-co/gas-dev-deploy)   | Apps Script projects that deploy a web app          | clasp login and project choice; `.clasp.json` and `appsscript.json` from the `.example.json` templates; push, then a guided manual web-app deployment recorded in `.env`; project-defined steps through `gasDevDeploy.steps`                               |
+| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); peer type sync (`peers sync`); GitHub rulesets (`github`) |
+| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                                                                           |
+| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                                                                                |
+| [`gas-dev-deploy`](https://github.com/yorsh-co/gas-dev-deploy)   | Apps Script projects that deploy a web app          | clasp login and project choice; `.clasp.json` and `appsscript.json` from the `.example.json` templates; push, then a guided manual web-app deployment recorded in `.env`; project-defined steps through `gasDevDeploy.steps`                                                           |
 
 Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead); a project that deploys a web app adds `gas-dev-deploy`.
 
@@ -658,6 +658,22 @@ updates:
         patterns:
           - '*'
 ```
+
+## GitHub rulesets
+
+`gas-dev-config github` keeps the repository rulesets the same in every gas-\* repo. Two rulesets, `branches` and `tags`, come from templates shipped with this package:
+
+- `branches`: the default branch, `develop`, `dist` and `dist-web` cannot be deleted or force-pushed.
+- `tags`: tags cannot be deleted or moved, but can be created, so `vX.Y.Z` and `<branch>/vX.Y.Z` tags still work.
+
+Requirements: [GitHub CLI](https://cli.github.com) installed and authenticated (`gh auth login`), and admin rights on the repository for `--fix`.
+
+```sh
+npx gas-dev-config github         # report drift against the templates
+npx gas-dev-config github --fix   # create missing rulesets and update drifted ones
+```
+
+Exit codes: `0` in sync (or fixed), `1` drift or failure, `2` usage error. Rulesets that are not in the template are reported but never changed or deleted. The command is not part of `check`, which stays offline. See [ADR 0009](docs/adr/0009-github-rulesets.md).
 
 ## Migrating a gas-\* project
 

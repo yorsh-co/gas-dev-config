@@ -11,6 +11,7 @@ import {
   loadConfig,
 } from './check.js';
 import { GasTestError, runBuild, runRun } from './gas-test.js';
+import { GithubError, runGithub } from './github.js';
 import { HtmlError, runHtml } from './html.js';
 import { PeersError, runPeers } from './peers.js';
 
@@ -25,6 +26,7 @@ const OPTIONS = /** @type {const} */ ({
 
 const USAGE = `Usage: gas-dev-config check [--fix]
        gas-dev-config init
+       gas-dev-config github [--fix]
        gas-dev-config gas-test build [--out <file>]
        gas-dev-config gas-test run [--keep]
        gas-dev-config html [--check]
@@ -48,6 +50,8 @@ Commands:
   gas-test run     Push that script to the dedicated test project with clasp
                    (replacing its whole contents), run it and print the results;
                    needs GAS_TEST_SCRIPT_ID or "gasTest.scriptId"
+  github           Compare this repository's GitHub rulesets with the template
+                   through gh; needs network access and an authenticated gh
   html             Inline each "html" entry's local stylesheets and scripts
                    (TypeScript is transpiled) into a generated .ts file that
                    declares the page as a string constant
@@ -66,6 +70,7 @@ Options:
                    file is stale
   --fix            check: append missing template lines to .gitignore and
                    .prettierignore (creating them if absent)
+                   github: create or update the rulesets
 `;
 
 /**
@@ -114,9 +119,18 @@ export function main(argv) {
   const isRun = command === 'gas-test' && rest.join(' ') === 'run';
   const isCheck = command === 'check' && rest.length === 0;
   const isInit = command === 'init' && rest.length === 0;
+  const isGithub = command === 'github' && rest.length === 0;
   const isHtml = command === 'html' && rest.length === 0;
   const isPeers = command === 'peers' && rest.join(' ') === 'sync';
-  if (!isCheck && !isInit && !isBuild && !isRun && !isHtml && !isPeers) {
+  if (
+    !isCheck &&
+    !isInit &&
+    !isGithub &&
+    !isBuild &&
+    !isRun &&
+    !isHtml &&
+    !isPeers
+  ) {
     return usageError(`unknown command: ${positionals.join(' ')}.`);
   }
   if (values.out !== undefined && !isBuild) {
@@ -128,10 +142,11 @@ export function main(argv) {
   if (values.check && !isHtml && !isPeers) {
     return usageError('--check is only valid with html or peers sync.');
   }
-  if (values.fix && !isCheck) {
-    return usageError('--fix is only valid with check.');
+  if (values.fix && !isCheck && !isGithub) {
+    return usageError('--fix is only valid with check or github.');
   }
   try {
+    if (isGithub) return runGithub({ fix: values.fix === true });
     if (isHtml) {
       const { html } = loadConfig(process.cwd());
       return runHtml(process.cwd(), html, { check: values.check === true });
@@ -156,6 +171,7 @@ export function main(argv) {
     if (
       error instanceof CheckError ||
       error instanceof GasTestError ||
+      error instanceof GithubError ||
       error instanceof HtmlError ||
       error instanceof PeersError
     ) {
