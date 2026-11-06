@@ -355,6 +355,20 @@ describe('compareRulesets', () => {
     ]);
   });
 
+  it('treats exclude refs in another order as equal', () => {
+    const ref = (/** @type {string[]} */ exclude) => ({
+      ...branches,
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude } },
+    });
+    const template = ref(['refs/heads/a', 'refs/heads/b']);
+    const actual = { id: 1, ...ref(['refs/heads/b', 'refs/heads/a']) };
+    expect(compareRulesets([template], [actual])).toMatchObject({
+      inSync: ['branches'],
+      missing: [],
+      drifted: [],
+    });
+  });
+
   it('detects a different include list', () => {
     const actual = {
       id: 1,
