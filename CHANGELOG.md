@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- README lists `gas-dev-deploy` among the `gas-dev-*` tools
+
 ---
 
 ## [2.0.1] - 2026-11-04
