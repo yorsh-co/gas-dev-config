@@ -14,6 +14,7 @@
 - **BREAKING:** the package is renamed to `gasdev` and the `gas-dev-config` binary to `gasdev`; see "Migrating to 3.0" in the README
 - **BREAKING:** configuration lives under the `gasdev` package.json key, with `gasdev.bundle`, `gasdev.release` and `gasdev.ci` replacing the separate tool keys
 - `gasdev gas-test run` resolves clasp from `node_modules`
+- A spawned test covers `gasdev gas-test run`'s install hint when `@google/clasp` cannot be resolved
 - `@google/clasp` is a devDependency, with a `gaxios` override
 - Dev-only: a package-wide v8 coverage gate (`npm run test:coverage`, ratchet thresholds) now runs in `npm run check`, and `gasdev check` expects that script when checking gasdev itself; consumer projects are unaffected
 - gh plumbing and ruleset reads are shared in `src/gh.js` by the release ruleset checks and `gasdev github`
