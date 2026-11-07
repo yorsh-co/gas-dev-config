@@ -1,5 +1,5 @@
 // @ts-check
-import { spawnSync } from 'node:child_process';
+import { GhError, ghApi, listRulesets, readRuleset } from '../gh.js';
 import { ReleaseError } from './errors.js';
 
 /** Rule types every release branch must carry. */
@@ -8,36 +8,25 @@ const BRANCH_RULES = ['deletion', 'non_fast_forward'];
 /** Rule types the tag ruleset must carry. */
 const TAG_RULES = ['deletion', 'non_fast_forward', 'update'];
 
+const MISSING_GH =
+  'gh is not installed — install GitHub CLI or set githubRelease to false.';
+
 /**
- * Calls `gh api` and parses the JSON response.
+ * Runs a gh read, turning gh failures into release errors.
  *
- * @param {string} path API path.
- * @param {string} cwd Project root.
- * @returns {any}
- * @throws {ReleaseError} When gh is missing, fails or prints something other than JSON.
+ * @template T
+ * @param {() => T} read
+ * @returns {T}
+ * @throws {ReleaseError} When gh is missing or the call fails.
  */
-function ghApi(path, cwd) {
-  const result = spawnSync('gh', ['api', path], { cwd, encoding: 'utf8' });
-  if (result.error) {
-    const { code } = /** @type {NodeJS.ErrnoException} */ (result.error);
-    if (code === 'ENOENT') {
-      throw new ReleaseError(
-        'gh is not installed — install GitHub CLI or set githubRelease to false.',
-      );
-    }
-    throw new ReleaseError(`gh failed: ${result.error.message}`);
-  }
-  if (result.status !== 0) {
-    throw new ReleaseError(
-      `gh api ${path} failed: ${(result.stderr ?? '').trim()}`,
-    );
-  }
+function viaGh(read) {
   try {
-    return JSON.parse(result.stdout);
-  } catch {
-    throw new ReleaseError(
-      `gh api ${path} returned unexpected output: ${result.stdout.trim()}`,
-    );
+    return read();
+  } catch (error) {
+    if (error instanceof GhError) {
+      throw new ReleaseError(error.missing ? MISSING_GH : error.message);
+    }
+    throw error;
   }
 }
 
@@ -51,9 +40,8 @@ function ghApi(path, cwd) {
  */
 function missingBranchRules(repo, branch, cwd) {
   const encoded = branch.split('/').map(encodeURIComponent).join('/');
-  const rules = ghApi(
-    `repos/${repo}/rules/branches/${encoded}?per_page=100`,
-    cwd,
+  const rules = viaGh(() =>
+    ghApi(`repos/${repo}/rules/branches/${encoded}?per_page=100`, { cwd }),
   );
   const present = new Set(
     (Array.isArray(rules) ? rules : []).map(
@@ -71,14 +59,13 @@ function missingBranchRules(repo, branch, cwd) {
  * @returns {string | undefined} The gap, or undefined when the tags are protected.
  */
 function tagGap(repo, cwd) {
-  const list = ghApi(`repos/${repo}/rulesets?per_page=100`, cwd);
-  const active = (Array.isArray(list) ? list : []).filter(
+  const active = viaGh(() => listRulesets(repo, { cwd })).filter(
     (/** @type {{ target?: string, enforcement?: string }} */ r) =>
       r.target === 'tag' && r.enforcement === 'active',
   );
   if (active.length === 0) return 'tags: no active tag ruleset';
   const covered = active.some((/** @type {{ id: number }} */ { id }) => {
-    const ruleset = ghApi(`repos/${repo}/rulesets/${id}`, cwd);
+    const ruleset = viaGh(() => readRuleset(repo, id, { cwd }));
     const refName = ruleset?.conditions?.ref_name;
     const types = new Set(
       (Array.isArray(ruleset?.rules) ? ruleset.rules : []).map(

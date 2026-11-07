@@ -207,6 +207,13 @@ describe('assertProtected', () => {
     expect(failure(targets('dist'))).toContain('returned unexpected output');
   });
 
+  it('explains a missing gh', () => {
+    process.env.PATH = '';
+    expect(failure(targets('dist'))).toBe(
+      'gh is not installed — install GitHub CLI or set githubRelease to false.',
+    );
+  });
+
   it('requests a slashed branch without encoding the slash', () => {
     const gh = setup({});
     assertProtected(REPO, targets('dist/web'), process.cwd());
