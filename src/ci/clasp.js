@@ -37,6 +37,7 @@ export function resolveClaspBin(root) {
 
 /**
  * @typedef {object} Clasp
+ * @property {string} bin Absolute path of the clasp entry script in use.
  * @property {() => { loggedIn: boolean, email: string | undefined }} whoAmI
  * @property {() => void} login Interactive; inherits the terminal.
  * @property {(title: string) => { scriptId: string }} create
@@ -132,6 +133,7 @@ export function createClasp({ cwd, env, redact = (text) => text, bin, auth }) {
   }
 
   return {
+    bin: claspBin,
     push() {
       run(['push', '--force']);
     },

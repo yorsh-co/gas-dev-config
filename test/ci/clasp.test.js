@@ -63,6 +63,10 @@ describe('createClasp', () => {
     expect(resolveBin).toHaveBeenCalledWith('/project');
   });
 
+  it('exposes the clasp bin in use', () => {
+    expect(make().bin).toBe(fakeClaspBin);
+  });
+
   it('pushes with --force in the working directory', () => {
     make().push();
     const [call] = readCalls(logPath);

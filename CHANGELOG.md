@@ -24,6 +24,7 @@
 - Dev-only: a comment in `bin/check.js` notes that the self-test rewrite depends on the scripts template's `check` wording
 - Dev-only: a test covers `gasdev release` falling back to gh's exit status when `gh release create` fails without stderr
 - **BREAKING:** `gasdev deploy` errors are prefixed with `gasdev:`, matching `setup` and the other commands
+- `gasdev deploy` prints the clasp it runs (`Using clasp: <path>`); see ADR 0022
 
 ### Fixed
 

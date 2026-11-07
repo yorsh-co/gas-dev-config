@@ -68,6 +68,7 @@ function fakeClasp(options = {}) {
     args[name] = params;
   };
   const clasp = {
+    bin: '/fake/clasp.js',
     push: () => step('push'),
     listDeployments: () => {
       step('list');
@@ -249,12 +250,13 @@ describe('deploy', () => {
 
   it('hands the real clasp only the temporary file, without CLASPRC_JSON', async () => {
     const log = join(root, 'clasp.log');
-    const { context } = setup({ FAKE_CLASP_LOG: log });
+    const { context, stdout } = setup({ FAKE_CLASP_LOG: log });
     await deploy({
       ...context,
       createClasp: (/** @type {any} */ options) =>
         createClasp({ ...options, bin: fakeClaspBin }),
     });
+    expect(stdout.text).toContain(`Using clasp: ${fakeClaspBin}\n`);
     const calls = readCalls(log);
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
@@ -277,7 +279,9 @@ describe('deploy', () => {
     const { context, calls, stdout, output, summary } = setup();
     await deploy(context);
     expect(calls).toEqual(['push']);
-    expect(stdout.text).toBe('Pushed (push only).\n');
+    expect(stdout.text).toBe(
+      'Using clasp: /fake/clasp.js\nPushed (push only).\n',
+    );
     expect(output()).toBe('url=\n');
     expect(summary()).toContain('push only');
   });
@@ -299,7 +303,9 @@ describe('deploy', () => {
     expect(args.deploy).toEqual([DEPLOYMENT, 4, 'abc123']);
     const url = `https://script.google.com/macros/s/${DEPLOYMENT}/exec`;
     expect(calls).toEqual(['list', 'pull', 'push', 'version', 'deploy']);
-    expect(stdout.text).toBe(`Deployed version 4: ${url}\n`);
+    expect(stdout.text).toBe(
+      `Using clasp: /fake/clasp.js\nDeployed version 4: ${url}\n`,
+    );
     expect(output()).toBe(`url=${url}\n`);
     expect(summary()).toContain(url);
     expect(summary()).toContain('4');
@@ -485,6 +491,7 @@ describe('secret leakage', () => {
     expect(lines.slice(0, 2).sort()).toEqual(
       secrets.map((secret) => `::add-mask::${secret}`).sort(),
     );
+    expect(lines[2]).toBe('Using clasp: /fake/clasp.js');
     const rest = lines.slice(2).join('\n');
     expect(leaks(rest + s.output() + s.summary())).toBe(false);
   });
