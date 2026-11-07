@@ -1,8 +1,9 @@
 // @ts-check
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ReleaseError } from './errors.js';
+import { gh } from '../gh.js';
+import { ReleaseError, viaGh } from './errors.js';
 import { git } from './git.js';
 
 const GITHUB_URL =
@@ -122,20 +123,9 @@ export function releaseNotes(cwd, version) {
  * @throws {ReleaseError} When gh is missing or fails for another reason.
  */
 export function findRelease(repo, tag, cwd) {
-  const result = spawnSync(
-    'gh',
-    ['release', 'view', tag, '-R', repo, '--json', 'isDraft'],
-    { cwd, encoding: 'utf8' },
+  const result = viaGh(() =>
+    gh(['release', 'view', tag, '-R', repo, '--json', 'isDraft'], { cwd }),
   );
-  if (result.error) {
-    const { code } = /** @type {NodeJS.ErrnoException} */ (result.error);
-    if (code === 'ENOENT') {
-      throw new ReleaseError(
-        'gh is not installed — install GitHub CLI or set githubRelease to false.',
-      );
-    }
-    throw new ReleaseError(`gh failed: ${result.error.message}`);
-  }
   if (result.status !== 0) {
     const stderr = (result.stderr ?? '').trim();
     if (stderr.includes('release not found')) return 'absent';
@@ -157,12 +147,11 @@ export function findRelease(repo, tag, cwd) {
  * @param {string} tag Tag name.
  * @param {string} notes Release notes, passed on stdin.
  * @param {string} cwd Project root.
- * @throws {Error} With gh's stderr when gh exits non-zero.
+ * @throws {ReleaseError} With gh's stderr when gh is missing or exits non-zero.
  */
 export function createRelease(repo, tag, notes, cwd) {
-  try {
-    execFileSync(
-      'gh',
+  const result = viaGh(() =>
+    gh(
       [
         'release',
         'create',
@@ -175,11 +164,14 @@ export function createRelease(repo, tag, notes, cwd) {
         '--notes-file',
         '-',
       ],
-      { cwd, input: notes, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
+      { cwd, input: notes },
+    ),
+  );
+  if (result.status !== 0) {
+    throw new ReleaseError(
+      (result.stderr ?? '').trim() ||
+        `gh release create ${tag} failed (exit ${result.status})`,
     );
-  } catch (error) {
-    const { stderr } = /** @type {{ stderr?: string }} */ (error);
-    throw new Error(stderr?.trim() || String(error), { cause: error });
   }
 }
 
