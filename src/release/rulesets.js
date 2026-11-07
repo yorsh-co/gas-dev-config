@@ -1,34 +1,12 @@
 // @ts-check
-import { GhError, ghApi, listRulesets, readRuleset } from '../gh.js';
-import { ReleaseError } from './errors.js';
+import { ghApi, listRulesets, readRuleset } from '../gh.js';
+import { ReleaseError, viaGh } from './errors.js';
 
 /** Rule types every release branch must carry. */
 const BRANCH_RULES = ['deletion', 'non_fast_forward'];
 
 /** Rule types the tag ruleset must carry. */
 const TAG_RULES = ['deletion', 'non_fast_forward', 'update'];
-
-const MISSING_GH =
-  'gh is not installed — install GitHub CLI or set githubRelease to false.';
-
-/**
- * Runs a gh read, turning gh failures into release errors.
- *
- * @template T
- * @param {() => T} read
- * @returns {T}
- * @throws {ReleaseError} When gh is missing or the call fails.
- */
-function viaGh(read) {
-  try {
-    return read();
-  } catch (error) {
-    if (error instanceof GhError) {
-      throw new ReleaseError(error.missing ? MISSING_GH : error.message);
-    }
-    throw error;
-  }
-}
 
 /**
  * Finds the rule types a branch lacks, counting repository and organization rulesets.

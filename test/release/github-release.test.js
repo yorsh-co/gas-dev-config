@@ -2,17 +2,58 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { ReleaseError } from '../../src/release/errors.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MISSING_GH, ReleaseError } from '../../src/release/errors.js';
 import {
+  createRelease,
+  findRelease,
   githubRepo,
   notesPath,
   releaseNotes,
   retryCommand,
 } from '../../src/release/github-release.js';
-import { cleanup, createProject, git } from './helpers/project.js';
+import { cleanup, createProject, fakeGh, git } from './helpers/project.js';
 
-afterEach(cleanup);
+const KEYS = ['PATH', 'FAKE_GH_LOG', 'FAKE_GH_VIEW', 'FAKE_GH_CREATE'];
+
+/** @type {Record<string, string | undefined>} */
+let saved;
+
+beforeEach(() => {
+  saved = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
+});
+
+afterEach(() => {
+  for (const key of KEYS) {
+    if (saved[key] === undefined) delete process.env[key];
+    else process.env[key] = saved[key];
+  }
+  cleanup();
+});
+
+/**
+ * @param {Parameters<typeof fakeGh>[0]} behavior
+ * @returns {ReturnType<typeof fakeGh>}
+ */
+function setup(behavior) {
+  const gh = fakeGh(behavior);
+  Object.assign(process.env, gh.env);
+  return gh;
+}
+
+/** Points PATH at an empty directory so gh cannot be found. */
+function withoutGh() {
+  process.env.PATH = mkdtempSync(join(tmpdir(), 'gasdev-no-gh-'));
+  emptyDirs.push(process.env.PATH);
+}
+
+/** @type {string[]} */
+const emptyDirs = [];
+afterEach(() => {
+  for (const dir of emptyDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 /**
  * @param {string} url
@@ -154,5 +195,72 @@ describe('retry helpers', () => {
     expect(retryCommand('acme/gas-lib', 'v1.0.0')).toBe(
       'gh release create v1.0.0 -R acme/gas-lib --verify-tag --title v1.0.0 --notes-file .worktrees/github-release-v1.0.0.md',
     );
+  });
+});
+
+describe('findRelease', () => {
+  it.each(/** @type {const} */ (['absent', 'published', 'draft']))(
+    'returns %s',
+    (view) => {
+      setup({ view });
+      expect(findRelease('acme/gas-lib', 'v1.0.0', process.cwd())).toBe(view);
+    },
+  );
+
+  it('throws a ReleaseError when gh fails', () => {
+    setup({ view: 'error' });
+    expect(() => findRelease('acme/gas-lib', 'v1.0.0', process.cwd())).toThrow(
+      ReleaseError,
+    );
+  });
+
+  it('throws the missing-gh hint when gh is not installed', () => {
+    withoutGh();
+    expect(() => findRelease('acme/gas-lib', 'v1.0.0', process.cwd())).toThrow(
+      new ReleaseError(MISSING_GH),
+    );
+  });
+});
+
+describe('createRelease', () => {
+  it('passes the notes on stdin', () => {
+    const gh = setup({});
+    createRelease('acme/gas-lib', 'v1.0.0', 'the notes', process.cwd());
+    expect(gh.calls()).toEqual([
+      {
+        args: [
+          'release',
+          'create',
+          'v1.0.0',
+          '-R',
+          'acme/gas-lib',
+          '--verify-tag',
+          '--title',
+          'v1.0.0',
+          '--notes-file',
+          '-',
+        ],
+        stdin: 'the notes',
+      },
+    ]);
+  });
+
+  it("throws gh's trimmed stderr when gh fails", () => {
+    setup({ create: 'fail' });
+    expect(() =>
+      createRelease('acme/gas-lib', 'v1.0.0', 'notes', process.cwd()),
+    ).toThrow(
+      expect.objectContaining({
+        name: 'ReleaseError',
+        message: 'HTTP 422: Validation Failed',
+      }),
+    );
+  });
+
+  it('throws the missing-gh hint when gh is not installed', () => {
+    withoutGh();
+    expect(() =>
+      createRelease('acme/gas-lib', 'v1.0.0', 'notes', process.cwd()),
+    ).toThrow(new ReleaseError(MISSING_GH));
   });
 });
