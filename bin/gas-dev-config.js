@@ -3,6 +3,7 @@
 import { parseArgs } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
 import { main as bundleMain } from '../src/bundle/cli.js';
+import { main as ciMain } from '../src/ci/cli.js';
 import { main as releaseMain } from '../src/release/cli.js';
 import {
   CheckError,
@@ -34,6 +35,8 @@ const USAGE = `Usage: gas-dev-config check [--fix]
        gas-dev-config html [--check]
        gas-dev-config bundle
        gas-dev-config release [--dry-run] [--target <branch>]...
+       gas-dev-config setup
+       gas-dev-config deploy
        gas-dev-config peers sync [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
@@ -63,6 +66,10 @@ Commands:
                    script file (see "gasDevConfig.bundle"; run bundle --help)
   release          Publish the build of a gas-* library to its dist branch(es)
                    with tags (see "gasDevConfig.release"; run release --help)
+  setup            Guided setup of a Google Apps Script web app deployment
+                   (see "gasDevConfig.ci"; run setup --help)
+  deploy           Push with clasp and redeploy the web app, as the reusable
+                   workflow does (run deploy --help)
   peers sync       Write src/internal/<peer>.peer.types.d.ts for each
                    "peers" entry from the peer's highest release tag that
                    satisfies its range (without the @version line); needs
@@ -101,6 +108,14 @@ function usageError(message) {
 export async function main(argv) {
   if (argv[0] === 'bundle') return bundleMain(argv.slice(1));
   if (argv[0] === 'release') return releaseMain(argv.slice(1));
+  if (argv[0] === 'setup' || argv[0] === 'deploy') {
+    return ciMain(argv, {
+      stdout: process.stdout,
+      stderr: process.stderr,
+      env: process.env,
+      cwd: process.cwd(),
+    });
+  }
   let parsed;
   try {
     parsed = parseArgs({

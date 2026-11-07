@@ -20,6 +20,7 @@
 - `gas-dev-config gas-test` builds a library's tests into one script that runs in real Apps Script, from the editor or through clasp
 - `gas-dev-config html` inlines a page edited as `.html`, `.css` and TypeScript into one generated `.ts` string constant, so an HtmlService UI ships as a single Apps Script source file
 - `gas-dev-config peers sync` writes the peer libraries' type declarations into `src/internal/` from their tagged releases, so they never drift from hand copies
+- `gas-dev-config setup` and `gas-dev-config deploy` take an Apps Script web app from a guided first-time setup to clasp-based CI deployment, with a reusable GitHub Actions workflow
 - Plain ESM JavaScript, no build step
 
 <a id="gas-dev-tools"></a>
@@ -28,12 +29,11 @@
 
 Development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
 
-| Tool                                                   | Installed by                               | Purpose                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gas-dev-config` (this package)                        | Library authors                            | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); bundling gas-\* libraries (`bundle`); peer type sync (`peers sync`); publishing the build to the `dist` branch with tags (`release`); GitHub rulesets (`github`) |
-| [`gas-dev-ci`](https://github.com/yorsh-co/gas-dev-ci) | Apps Script projects that deploy a web app | `setup`: clasp login, project, `.clasp.json` and manifest from the `.example.json` templates, push and a guided manual web-app deployment recorded in `.env`, project-defined steps through `gasDevCi.steps`; `deploy` and a reusable GitHub Actions workflow that push and redeploy from CI                                                                                                  |
+| Tool                            | Installed by                             | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gas-dev-config` (this package) | Library authors and Apps Script projects | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`, `bundle`, `release`, `ci`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); bundling gas-\* libraries (`bundle`); peer type sync (`peers sync`); publishing the build to the `dist` branch with tags (`release`); GitHub rulesets (`github`); guided web-app setup (`setup`) and CI deployment (`deploy`, reusable workflow) |
 
-Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` (including `release`); a project consuming several libraries uses `gas-dev-config bundle` (a single library can be added with `git subtree` instead); a project that deploys a web app adds `gas-dev-ci`.
+It is a dev dependency installed from GitHub with a `#semver:` range. A library uses it for presets and `release`; a project consuming several libraries uses `gas-dev-config bundle` (a single library can be added with `git subtree` instead); a project that deploys a web app uses `gas-dev-config setup` and `gas-dev-config deploy`.
 
 The tools are connected by one piece of metadata, declared once in the library:
 
@@ -840,6 +840,333 @@ Exit codes:
 | `1`  | The release was refused or failed; nothing was pushed                   |
 | `2`  | Invalid usage                                                           |
 | `3`  | Released and pushed, but the GitHub Release was not created (see above) |
+
+## Deploy a web app
+
+Setup and CI deployment for Google Apps Script projects: a guided `gas-dev-config setup` wizard, a reusable GitHub Actions workflow and a `gas-dev-config deploy` CLI that push with clasp and redeploy web apps. Both commands use the same clasp, resolved from the project's `node_modules`.
+
+### Requirements and install
+
+- A project with `npm run check` and `npm run build` scripts (or custom commands, see [Workflow inputs](#workflow-inputs-and-outputs)) and a built `<rootDir>/appsscript.json`
+- A GitHub environment per target, with the secret and variables below
+- The Apps Script API enabled at https://script.google.com/home/usersettings
+- `@google/clasp` as a dev dependency: `npm install -D @google/clasp`
+
+The workflow runs the CLI with `npx --no-install`, so a missing dependency fails instead of fetching an unrelated package. Add a script for the wizard:
+
+```json
+{ "scripts": { "deploy:setup": "gas-dev-config setup" } }
+```
+
+The workflow is referenced by an exact tag (`@v3.0.0`) and the CLI by a semver range (`#semver:^3.0.0`). They are fetched separately: the workflow definition by GitHub when the job starts, the CLI by `npm ci` from your lockfile. Keep them on the same version.
+
+### Setup
+
+Steps 1-4 are done once per repository, steps 5-8 once per environment (`dev`, `live`), and steps 9-10 once.
+
+#### 1. Enable the Apps Script API
+
+Enable the [Apps Script API](https://script.google.com/home/usersettings) for the Google account that owns the scripts, ideally a dedicated account.
+
+#### 2. Install the CLI
+
+See [Requirements and install](#requirements-and-install).
+
+#### 3. Commit `.clasp.example.json`
+
+Commit `.clasp.example.json` at the project root. It is the base of `.clasp.json`, without `scriptId`. The optional `rootDir` (relative, no `..`) is where the build writes `appsscript.json`:
+
+```json
+{ "rootDir": "dist" }
+```
+
+Add `.clasp.json` to `.gitignore`: the CLI overwrites it from the template plus `GAS_SCRIPT_ID`.
+
+#### 4. Provide `check` and `build`
+
+Define `npm run check` and `npm run build` scripts, or override them with the [workflow inputs](#workflow-inputs-and-outputs). The build must produce `<rootDir>/appsscript.json`. Web apps declare `oauthScopes` explicitly; see [Scope changes](#scope-changes).
+
+#### 5. Create the Apps Script project and web app deployment
+
+For web apps, run `npm run deploy:setup` (the [setup wizard](#setup-wizard)) and read `GAS_SCRIPT_ID` and `GAS_DEPLOYMENT_ID` from `.env`. Manually: copy the Script ID from Project Settings, then Deploy > New deployment > Web app, and copy the deployment ID (versioned, not HEAD). CI never creates the first deployment, because it requires an interactive consent prompt; this applies to both `npm run deploy:setup` and the editor path. `deploy:setup` writes the IDs to `.env` and has no per-environment option, so record them before running it again for the next environment.
+
+Libraries and bound scripts need only the script ID; see [Project types](#project-types). Use a separate script per environment.
+
+#### 6. Create the GitHub environment restricted to its branch
+
+Example for `dev` and `develop`; repeat for `live` and `main`. The deployment branch policy releases `CLASPRC_JSON` only to runs on that branch:
+
+```sh
+gh api -X PUT repos/{owner}/{repo}/environments/dev \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/{owner}/{repo}/environments/dev/deployment-branch-policies \
+  -f name=develop
+```
+
+Alternatively, in the UI: Settings > Environments > New environment > Deployment branches and tags > Selected branches.
+
+#### 7. Set the variables
+
+```sh
+gh variable set GAS_SCRIPT_ID --env dev --body <script-id>
+gh variable set GAS_DEPLOYMENT_ID --env dev --body <deployment-id>
+```
+
+`GAS_DEPLOYMENT_ID` is for web apps only. These are variables, not secrets; see [Environments](#environments).
+
+#### 8. Store `CLASPRC_JSON`
+
+Run `npx clasp login` (or `npm run deploy:setup`, which logs in) on a trusted machine, ideally with a dedicated Google account that owns the scripts. Then store the credentials in the environment; repeat for `live`:
+
+```sh
+gh secret set CLASPRC_JSON --env dev < ~/.clasprc.json
+```
+
+See [Token expiry, revocation and rotation](#token-expiry-revocation-and-rotation).
+
+#### 9. Add the caller workflow
+
+Add the workflow from [Usage](#usage) at `.github/workflows/deploy.yml`.
+
+#### 10. Verify the first run
+
+Push to `develop`, then merge to `main` and confirm the `live` run. The job summary and the `url` output show the web app URL; a push-only project shows no URL. On a scope-change failure, follow [Scope changes](#scope-changes). On `invalid_grant`, follow [token rotation](#token-expiry-revocation-and-rotation).
+
+### Setup wizard
+
+Run it from the project root:
+
+```sh
+npm run deploy:setup
+```
+
+The wizard runs these steps in order:
+
+1. **Authentication:** continue as the logged-in clasp user, or log in with another account.
+2. **Apps Script project:** reuse the project in `.clasp.json`, or create a new one.
+3. **Configuration:** write `.clasp.json` and the manifest, asking for the time zone.
+4. **Push:** `clasp push --force`.
+5. **Deployment:** open the script editor, wait while you deploy the web app, then read the deployment and confirm its URL.
+6. **Summary:** script ID, web app URL, deployment ID and version.
+
+Exit codes: `0` success, `1` failed deployment, `2` invalid usage, `130` cancelled.
+
+#### Configuration
+
+Two templates are required at the project root:
+
+- `.clasp.example.json`: the base of `.clasp.json`. Its optional `rootDir` (default `.`) is where the manifest is written.
+- `appsscript.example.json`: the base of the manifest.
+
+Options live in `package.json` under `gasDevConfig.ci`:
+
+| Key     | Type   | Default                 | Description                        |
+| ------- | ------ | ----------------------- | ---------------------------------- |
+| `title` | string | `package.json` `"name"` | Title of a new Apps Script project |
+| `steps` | string | none                    | Module with project-defined steps  |
+
+Unknown keys are rejected.
+
+#### Custom steps
+
+Set `gasDevConfig.ci.steps` to a project-relative path to an ES module (`.js` or `.mjs`, no `..` segments). Its default export is an array of steps, run in order after the deployment and before the summary:
+
+```json
+{ "gasDevConfig": { "ci": { "steps": "scripts/deploy-steps.js" } } }
+```
+
+The module is loaded before login, so a broken module fails before anything touches Apps Script. Each step is `{ title, run(ctx) }`, where `title` is a non-empty string and `run` is a function that may be async. Throw `DeployError` (exported by `gas-dev-config/ci`) to fail cleanly; any other error is reported as `Step "<title>" failed: <message>`. An error thrown from a prompt question's `validate`, `format` or `onSubmit` callback is reported by `prompts` as a cancel (`Cancelled.`, exit 130), so validate inputs in `run` when the message matters.
+
+`ctx` has:
+
+| Property             | Description                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `cwd`                | Project root                                                                       |
+| `pkg`                | Parsed `package.json`                                                              |
+| `deployment`         | `{ scriptId, webappUrl, deploymentId, version }`                                   |
+| `env.read()`         | Parsed `.env`, empty when the file does not exist                                  |
+| `env.update(values)` | Sets keys in `.env` in place, keeping comments; values must not contain newlines   |
+| `prompt(questions)`  | [`prompts`](https://github.com/terkelg/prompts) questions; resolves to the answers |
+| `log`                | `info`, `success`, `warn`, `error`, `raw` and `section`                            |
+| `openScript()`       | Opens the script in the Apps Script editor                                         |
+
+Types ship with the package. Steps run with your user privileges, so only point `steps` at code you trust. See [ADR 0016](docs/adr/0016-project-defined-steps.md).
+
+##### Example: Calendly OAuth credentials
+
+A step that asks for a Calendly OAuth client ID and secret, stores them in `.env`, prints the Script Property to save and opens the editor:
+
+```js
+// scripts/deploy-steps.js
+import { DeployError } from 'gas-dev-config/ci';
+
+/** @type {import('gas-dev-config/ci').DeployStep[]} */
+export default [
+  {
+    title: 'Calendly OAuth setup',
+    async run(ctx) {
+      const stored = ctx.env.read();
+      let clientId = stored.CALENDLY_CLIENT_ID;
+      let clientSecret = stored.CALENDLY_CLIENT_SECRET;
+
+      let provide = true;
+      if (clientId && clientSecret) {
+        ctx.log.warn('Existing Calendly OAuth credentials detected');
+        ({ provide } = await ctx.prompt({
+          type: 'confirm',
+          name: 'provide',
+          message: 'Provide new credentials?',
+          initial: true,
+        }));
+      }
+
+      if (provide) {
+        ({ clientId, clientSecret } = await ctx.prompt([
+          { type: 'text', name: 'clientId', message: 'OAuth Client ID' },
+          {
+            type: 'password',
+            name: 'clientSecret',
+            message: 'OAuth Client Secret',
+          },
+        ]));
+        if (!clientId || !clientSecret) {
+          throw new DeployError('Client ID and secret are required');
+        }
+        ctx.env.update({
+          CALENDLY_CLIENT_ID: clientId,
+          CALENDLY_CLIENT_SECRET: clientSecret,
+        });
+      }
+
+      const credentials = {
+        clientId,
+        clientSecret,
+        redirectUri: ctx.deployment.webappUrl,
+      };
+      ctx.log.info('Save this JSON as a Script Property:');
+      ctx.log.raw(JSON.stringify(credentials, null, 2));
+
+      ctx.openScript();
+      await ctx.prompt({
+        type: 'text',
+        name: 'done',
+        message: 'After saving the Script Property, press ENTER to continue',
+      });
+    },
+  },
+];
+```
+
+#### Files written
+
+- `.clasp.json`: the template plus `scriptId`. It is always regenerated, never merged with an older file.
+- `<rootDir>/appsscript.json`: the existing manifest, then the template, with the chosen `timeZone`. The default time zone is the template's, then the existing manifest's, then the system's, then `Etc/UTC`.
+- `.env`: updated in place with the variables below, and created with mode `0600`.
+
+#### Environment variables
+
+| Variable            | Value                                          |
+| ------------------- | ---------------------------------------------- |
+| `GAS_SCRIPT_ID`     | Apps Script project ID                         |
+| `GAS_WEBAPP_URL`    | `https://script.google.com/macros/s/<id>/exec` |
+| `GAS_DEPLOYMENT_ID` | Deployment ID of the web app                   |
+| `GAS_VERSION`       | Deployed version number                        |
+
+#### Why deployment is manual
+
+Deploying from the Apps Script editor triggers the OAuth consent prompt for the manifest's scopes without a Google Cloud OAuth client, which `clasp deploy` followed by `clasp run` would need. See [ADR 0015](docs/adr/0015-manual-web-app-deployment.md).
+
+### Usage
+
+```yaml
+on:
+  push:
+    branches: [develop, main]
+jobs:
+  deploy:
+    uses: yorsh-co/gas-dev-config/.github/workflows/gas-deploy.yml@v3.0.0
+    with:
+      environment: ${{ github.ref_name == 'main' && 'live' || 'dev' }}
+    secrets: inherit
+```
+
+`develop` deploys to the `dev` environment and `main` to `live`. `secrets: inherit` is enough: the secret is resolved from the environment the job runs in.
+
+#### Environments
+
+| Environment | Branch    | Secret         | Variables                            |
+| ----------- | --------- | -------------- | ------------------------------------ |
+| `dev`       | `develop` | `CLASPRC_JSON` | `GAS_SCRIPT_ID`, `GAS_DEPLOYMENT_ID` |
+| `live`      | `main`    | `CLASPRC_JSON` | `GAS_SCRIPT_ID`, `GAS_DEPLOYMENT_ID` |
+
+The IDs are variables, not secrets, on purpose: GitHub drops job outputs that contain a secret value, and the web app URL contains the deployment ID. They identify the project but grant no access. Both may contain only letters, digits, `_` and `-`.
+
+#### Project types
+
+| Project               | `GAS_DEPLOYMENT_ID` | Result                                   |
+| --------------------- | ------------------- | ---------------------------------------- |
+| Web app               | set                 | Scope check, push, new version, redeploy |
+| Library, bound script | not set             | Push only                                |
+
+`GAS_DEPLOYMENT_ID` must be a versioned web app deployment, not the HEAD deployment.
+
+#### Workflow inputs and outputs
+
+| Input          | Default         | Description                                      |
+| -------------- | --------------- | ------------------------------------------------ |
+| `environment`  | required        | GitHub environment with the secret and variables |
+| `node-version` | `22`            | Node.js version                                  |
+| `check`        | `npm run check` | Lint, type check and tests                       |
+| `build`        | `npm run build` | Builds the project into its `rootDir`            |
+
+| Output | Description                                                         |
+| ------ | ------------------------------------------------------------------- |
+| `url`  | Web app URL of the redeployed version; empty for a push-only deploy |
+
+The `check` and `build` steps run project code and never see `CLASPRC_JSON`.
+
+### Token expiry, revocation and rotation
+
+A refresh token stops working when the user revokes access, after 6 months without use, on some password changes, and when the per-client token limit evicts old tokens. The symptom is `clasp push` failing with `invalid_grant`.
+
+To rotate: run `npx clasp login`, update the secret in every environment, then revoke the old grant in the Google Account's security settings.
+
+### Scope changes
+
+If the OAuth scopes in the built `appsscript.json` differ from those of the deployed version, the workflow fails before pushing and lists the added and removed scopes. To fix it:
+
+1. Build locally and run `clasp push`.
+2. In the Apps Script editor, go to Deploy > Manage deployments, edit the web app deployment, choose New version and authorize.
+3. Re-run the workflow.
+
+The check compares only the explicit `oauthScopes` in `appsscript.json`. A project that relies on automatic scope detection (no `oauthScopes` key) always passes the check, so web-app projects should declare `oauthScopes` explicitly.
+
+### Deploy CLI reference
+
+```sh
+gas-dev-config setup
+gas-dev-config deploy
+```
+
+`setup` takes no arguments; see [Setup wizard](#setup-wizard). The rest of this section covers `deploy`.
+
+| Variable              | Required             | Description                                                                                                                        |
+| --------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `CLASPRC_JSON`        | yes                  | Contents of `~/.clasprc.json`. Written to a private temporary file (mode 600), removed afterwards (in `RUNNER_TEMP` under Actions) |
+| `GAS_SCRIPT_ID`       | yes                  | Script ID, written to `.clasp.json` (overwritten if present)                                                                       |
+| `GAS_DEPLOYMENT_ID`   | no                   | Web app deployment to redeploy                                                                                                     |
+| `GITHUB_SHA`          | with a deployment ID | Description of the new version and deployment                                                                                      |
+| `GITHUB_OUTPUT`       | no                   | File that receives the `url` output                                                                                                |
+| `GITHUB_STEP_SUMMARY` | no                   | File that receives the job summary                                                                                                 |
+
+`.clasp.json` is rendered from `.clasp.example.json` plus the script ID (`rootDir` must be absent or a relative path without `..`). Under `GITHUB_ACTIONS=true` every string of `CLASPRC_JSON` with 8 or more characters is masked in the logs.
+
+| Exit code | Meaning                                                                       |
+| --------- | ----------------------------------------------------------------------------- |
+| 0         | Deployed, or help or version printed                                          |
+| 1         | Deployment failed: invalid inputs, scope change, missing build or clasp error |
+| 2         | Invalid usage                                                                 |
 
 ## Config check
 

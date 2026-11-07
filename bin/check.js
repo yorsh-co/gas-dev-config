@@ -12,6 +12,7 @@ const KNOWN_KEYS = [
   'html',
   'bundle',
   'release',
+  'ci',
 ];
 const GAS_TEST_KEYS = ['scopes', 'scriptId'];
 const HTML_KEYS = ['entry', 'out', 'name'];
@@ -383,7 +384,7 @@ function resolveConfig(pkg) {
       `package.json: unknown "gasDevConfig" key(s): ${unknown.join(', ')} (expected: ${KNOWN_KEYS.join(', ')})`,
     );
   }
-  for (const key of ['bundle', 'release']) {
+  for (const key of ['bundle', 'release', 'ci']) {
     if (config[key] !== undefined && !isRecord(config[key])) {
       throw new CheckError(
         `package.json: "gasDevConfig.${key}" must be an object`,
