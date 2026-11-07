@@ -17,7 +17,7 @@
 - A spawned test covers `gasdev gas-test run`'s install hint when `@google/clasp` cannot be resolved
 - `@google/clasp` is a devDependency, with a `gaxios` override
 - Dev-only: a package-wide v8 coverage gate (`npm run test:coverage`, ratchet thresholds) now runs in `npm run check`, and `gasdev check` expects that script when checking gasdev itself; consumer projects are unaffected
-- gh plumbing and ruleset reads are shared in `src/gh.js` by the release ruleset checks and `gasdev github`
+- gh plumbing, ruleset reads, and the `gh release` view/create calls are shared in `src/gh.js` by the release checks and `gasdev github`; `gasdev release` now reports a missing gh with the shared install hint
 - `gasdev setup` and `gasdev deploy` resolve clasp from the project's `node_modules` first, falling back to the one next to gasdev, as `gas-test run` does; see ADR 0020
 - The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
 
