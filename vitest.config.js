@@ -7,11 +7,13 @@ export default defineConfig({
     testTimeout: 30_000,
     coverage: {
       provider: 'v8',
+      // Measure spawned bin/* and helper CLIs too.
+      autoAttachSubprocess: true,
       include: ['src/**/*.js', 'bin/**/*.js'],
       exclude: ['**/*.d.ts'],
       reporter: ['text-summary'],
       // Floor to ratchet up as coverage grows, not a target.
-      thresholds: { statements: 55, branches: 48, functions: 59, lines: 57 },
+      thresholds: { statements: 78, branches: 69, functions: 73, lines: 78 },
     },
   },
 });
