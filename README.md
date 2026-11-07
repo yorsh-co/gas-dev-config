@@ -1,6 +1,6 @@
 # gasdev
 
-## Shared Prettier, TypeScript and ESLint configuration, plus release, bundle and deploy tooling, for gas-\* Google Apps Script projects.
+## Local development toolkit for Google Apps Script: shared TypeScript, ESLint and Prettier config, testing, builds, releases and CI deployment.
 
 > [!NOTE]
 > `gasdev` is development tooling. It is installed as a dev dependency and is never pushed to Apps Script.
