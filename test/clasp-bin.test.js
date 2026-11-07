@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { resolveClaspBin } from '../src/clasp-bin.js';
+import { describe, expect, it, vi } from 'vitest';
+import { resolveClaspBin, resolveProjectClaspBin } from '../src/clasp-bin.js';
 
 describe('resolveClaspBin', () => {
   it('returns the installed clasp entry script', () => {
@@ -14,6 +14,41 @@ describe('resolveClaspBin', () => {
   it('throws a plain Error when clasp cannot be resolved', () => {
     expect(() => resolveClaspBin(join(tmpdir(), 'nowhere.js'))).toThrow(
       'Could not resolve the @google/clasp bin',
+    );
+  });
+});
+
+describe('resolveProjectClaspBin', () => {
+  it('prefers the project install', () => {
+    /** @type {import('vitest').Mock<(from?: string | URL) => string>} */
+    const resolve = vi.fn(() => '/project/clasp.js');
+    expect(resolveProjectClaspBin('/project', resolve)).toBe(
+      '/project/clasp.js',
+    );
+    expect(resolve).toHaveBeenCalledTimes(1);
+    expect(String(resolve.mock.calls[0]?.[0])).toBe(
+      'file:///project/package.json',
+    );
+  });
+
+  it('falls back to the clasp next to this package', () => {
+    /** @type {import('vitest').Mock<(from?: string | URL) => string>} */
+    const resolve = vi.fn((from) => {
+      if (from) throw new Error('not in project');
+      return '/package/clasp.js';
+    });
+    expect(resolveProjectClaspBin('/project', resolve)).toBe(
+      '/package/clasp.js',
+    );
+    expect(resolve).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws the fallback's error when both are missing", () => {
+    const resolve = vi.fn((from) => {
+      throw new Error(from ? 'project missing' : 'package missing');
+    });
+    expect(() => resolveProjectClaspBin('/project', resolve)).toThrow(
+      'package missing',
     );
   });
 });

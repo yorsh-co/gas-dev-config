@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveClaspBin as resolveBin } from '../clasp-bin.js';
+import { resolveProjectClaspBin } from '../clasp-bin.js';
 import { DeployError } from './errors.js';
 
 const STRIPPED_ENV = new Set([
@@ -14,14 +14,15 @@ const STRIPPED_ENV = new Set([
 ]);
 
 /**
- * Resolves the installed `@google/clasp` bin.
+ * Resolves the `@google/clasp` bin, project-first.
  *
+ * @param {string} root Project root.
  * @returns {string}
  * @throws {DeployError} When clasp is not installed.
  */
-export function resolveClaspBin() {
+export function resolveClaspBin(root) {
   try {
-    return resolveBin();
+    return resolveProjectClaspBin(root);
   } catch (error) {
     throw new DeployError(/** @type {Error} */ (error).message);
   }
@@ -55,12 +56,12 @@ export function resolveClaspBin() {
  * @param {string} options.cwd
  * @param {NodeJS.ProcessEnv} options.env
  * @param {(text: string) => string} [options.redact] Applied to clasp output in error messages; identity by default.
- * @param {string} [options.bin] clasp entry script; defaults to the installed `@google/clasp`.
+ * @param {string} [options.bin] clasp entry script; defaults to the project's `@google/clasp`, then this package's.
  * @param {string} [options.auth] Credentials file passed to every command as `-A`; clasp defaults to `~/.clasprc.json`.
  * @returns {Clasp}
  */
 export function createClasp({ cwd, env, redact = (text) => text, bin, auth }) {
-  const claspBin = bin ?? resolveClaspBin();
+  const claspBin = bin ?? resolveClaspBin(cwd);
   // clasp reads clasp_config_* from the environment and they could redirect it to other credentials,
   // project or ignore file; CLASPRC_JSON holds the raw credentials and clasp must not see them.
   // Keys are matched case-insensitively (Windows env is case-insensitive).

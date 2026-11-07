@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Resolves the entry script of an installed `@google/clasp`. Its `exports` map does not expose
@@ -33,4 +34,20 @@ export function resolveClaspBin(from = import.meta.url) {
     // Falls through to the error below.
   }
   throw new Error('Could not resolve the @google/clasp bin; is it installed?');
+}
+
+/**
+ * Locates clasp: the project's own install first, then the one next to this package.
+ *
+ * @param {string} root Project root.
+ * @param {(from?: string | URL) => string} [resolve] Bin resolver.
+ * @returns {string} Absolute path of the clasp bin script.
+ * @throws {Error} The fallback resolver's error when clasp is installed in neither place.
+ */
+export function resolveProjectClaspBin(root, resolve = resolveClaspBin) {
+  try {
+    return resolve(pathToFileURL(join(root, 'package.json')));
+  } catch {
+    return resolve();
+  }
 }

@@ -27,6 +27,8 @@
 
 ## Clasp resolution differs between commands
 
+Amended by ADR 0020.
+
 The commands do not resolve clasp from the same place:
 
 - `gasdev gas-test run` resolves from the project's `node_modules` first, then from this package.
