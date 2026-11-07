@@ -1,6 +1,9 @@
 // @ts-check
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { GhError, gh, ghApi, listRulesets } from '../src/gh.js';
+import { GhError, gh, ghApi, listRulesets, readRuleset } from '../src/gh.js';
 import { cleanup, fakeGh } from './release/helpers/project.js';
 
 const KEYS = ['PATH', 'FAKE_GH_LOG', 'FAKE_GH_RULES'];
@@ -97,11 +100,35 @@ describe('listRulesets', () => {
     expect(paths(fake)).toEqual(['repos/a/b/rulesets?per_page=100']);
   });
 
+  it('returns an empty list when the response is not an array', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gh-object-'));
+    const bin = join(dir, 'gh');
+    writeFileSync(bin, '#!/bin/sh\necho \'{"message":"nope"}\'\n', {
+      mode: 0o755,
+    });
+    process.env.PATH = `${dir}:${process.env.PATH}`;
+    try {
+      expect(listRulesets('a/b')).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('can leave organization rulesets out', () => {
     const fake = setup();
     listRulesets('a/b', { includeParents: false });
     expect(paths(fake)).toEqual([
       'repos/a/b/rulesets?per_page=100&includes_parents=false',
+    ]);
+  });
+});
+
+describe('readRuleset', () => {
+  it('reads a ruleset by id', () => {
+    const fake = setup();
+    expect(readRuleset('a/b', 1)).toMatchObject({ name: 'tags' });
+    expect(fake.calls().map((call) => call.args[1])).toEqual([
+      'repos/a/b/rulesets/1',
     ]);
   });
 });

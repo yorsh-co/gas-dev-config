@@ -37,6 +37,8 @@ function gh(args, input) {
 }
 
 /**
+ * Runs a gh call, turning gh failures into GitHub errors.
+ *
  * @template T
  * @param {() => T} run
  * @returns {T}
