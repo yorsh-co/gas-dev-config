@@ -87,7 +87,7 @@ export async function main(argv, context) {
     return 0;
   } catch (error) {
     if (isDeployError(error)) {
-      stderr.write(`${error.message}\n`);
+      stderr.write(`gasdev: ${error.message}\n`);
       return 1;
     }
     throw error;
