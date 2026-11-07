@@ -15,6 +15,7 @@
 - **BREAKING:** configuration lives under the `gasdev` package.json key, with `gasdev.bundle`, `gasdev.release` and `gasdev.ci` replacing the separate tool keys
 - `gasdev gas-test run` resolves clasp from `node_modules`
 - `@google/clasp` is a devDependency, with a `gaxios` override
+- `gasdev setup` and `gasdev deploy` resolve clasp from the project's `node_modules` first, falling back to the one next to gasdev, as `gas-test run` does; see ADR 0020
 - The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
 
 ### Removed
