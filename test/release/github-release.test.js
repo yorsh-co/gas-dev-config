@@ -245,6 +245,18 @@ describe('createRelease', () => {
     ]);
   });
 
+  it('falls back to the exit status when gh fails without stderr', () => {
+    setup({ create: 'silent-fail' });
+    expect(() =>
+      createRelease('acme/gas-lib', 'v1.0.0', 'notes', process.cwd()),
+    ).toThrow(
+      expect.objectContaining({
+        name: 'ReleaseError',
+        message: 'gh release create v1.0.0 failed (exit 1)',
+      }),
+    );
+  });
+
   it("throws gh's trimmed stderr when gh fails", () => {
     setup({ create: 'fail' });
     expect(() =>

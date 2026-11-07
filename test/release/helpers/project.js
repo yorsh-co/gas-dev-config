@@ -224,7 +224,7 @@ export function useGitHubRemote(root, origin) {
  *
  * @param {object} [behavior]
  * @param {'absent' | 'published' | 'draft' | 'error'} [behavior.view] Outcome of `release view`.
- * @param {'ok' | 'fail'} [behavior.create] Outcome of `release create`.
+ * @param {'ok' | 'fail' | 'silent-fail'} [behavior.create] Outcome of `release create`; `silent-fail` exits 1 with no stderr.
  * @param {'protected' | 'error' | 'garbage' | { branches?: Record<string, string[]>, rulesets?: object[] }} [behavior.rules]
  *   Outcome of `gh api` rulesets lookups: fully protected, an auth failure, non-JSON output, or the rule types per
  *   branch (`branches`) and the repository rulesets (`rulesets`, with `id`, `target`, `enforcement`,
