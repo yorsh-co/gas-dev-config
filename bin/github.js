@@ -223,7 +223,7 @@ export function formatGithubReport(repo, result) {
   lines.push(
     issues === 0
       ? '✓ GitHub rulesets match the template'
-      : `✗ GitHub rulesets differ from the template: ${issues} issue(s). Run gas-dev-config github --fix to apply it.`,
+      : `✗ GitHub rulesets differ from the template: ${issues} issue(s). Run gasdev github --fix to apply it.`,
   );
   return lines;
 }

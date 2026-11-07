@@ -1,11 +1,11 @@
 {
-  "name": "gas-dev-config",
+  "name": "gasdev",
   "version": "2.2.0",
   "private": true,
-  "description": "Shared Prettier, TypeScript and ESLint configuration for gas-* Google Apps Script projects.",
+  "description": "Shared Prettier, TypeScript and ESLint configuration, plus release, bundle and deploy tooling, for gas-* Google Apps Script projects.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yorsh-co/gas-dev-config.git"
+    "url": "https://github.com/yorsh-co/gasdev.git"
   },
   "author": "Joshua Porter",
   "license": "MIT",
@@ -18,12 +18,13 @@
   },
   "type": "module",
   "bin": {
-    "gas-dev-config": "bin/gas-dev-config.js"
+    "gasdev": "bin/gasdev.js"
   },
   "files": [
     "bin",
     "eslint",
     "gas-test",
+    "src",
     "tsconfig",
     "prettier.json",
     "templates",
@@ -34,9 +35,10 @@
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/prompts": "^2.4.9",
     "eslint-config-prettier": "^10.1.8",
-    "gas-dev-bundle": "github:yorsh-co/gas-dev-bundle#semver:^2.0.0",
     "globals": "^17.7.0",
+    "prompts": "^2.4.2",
     "semver": "^7.8.5",
     "typescript-eslint": "^8.65.0"
   },
@@ -52,6 +54,8 @@
     }
   },
   "devDependencies": {
+    "@action-validator/cli": "^0.6.0",
+    "@google/clasp": "^3.4.1",
     "@types/google-apps-script": "^2.0.13",
     "@types/node": "^22.20.5",
     "@types/semver": "^7.8.0",
@@ -61,20 +65,30 @@
     "vitest": "^5.0.3"
   },
   "overrides": {
-    "minimatch": "^11.0.1"
+    "minimatch": "^11.0.1",
+    "gaxios": "^7.3.1"
   },
   "scripts": {
     "typecheck": "tsc --noEmit && echo '✓ TypeScript passed'",
     "lint": "eslint . && echo '✓ Lint passed'",
     "lint:fix": "eslint . --fix",
+    "lint:workflows": "action-validator .github/workflows/*.yml",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && node bin/gas-dev-config.js check",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && node bin/gasdev.js check",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:network": "GAS_DEV_CONFIG_NETWORK=1 vitest run test/peers.network.test.js"
+    "test:network": "GASDEV_NETWORK=1 vitest run test/peers.network.test.js"
   },
   "exports": {
+    "./bundle": {
+      "types": "./src/bundle/types.d.ts",
+      "default": "./src/bundle/index.js"
+    },
+    "./ci": {
+      "types": "./src/ci/types.d.ts",
+      "default": "./src/ci/index.js"
+    },
     "./eslint": "./eslint/index.js",
     "./gas-test": {
       "types": "./gas-test/runtime.d.ts",
@@ -89,7 +103,7 @@
     "./tsconfig/*": "./tsconfig/*",
     "./package.json": "./package.json"
   },
-  "gasDevConfig": {
+  "gasdev": {
     "preset": "node"
   }
 }
