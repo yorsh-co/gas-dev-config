@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { GasTestError, INSTALL_HINT, claspBin } from '../bin/gas-test.js';
 
@@ -8,7 +10,7 @@ describe('claspBin', () => {
     expect(claspBin('/project', resolve)).toBe('/project/clasp.js');
     expect(resolve).toHaveBeenCalledTimes(1);
     expect(String(resolve.mock.calls[0]?.[0])).toBe(
-      'file:///project/package.json',
+      pathToFileURL(join('/project', 'package.json')).href,
     );
   });
 
