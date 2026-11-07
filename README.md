@@ -27,7 +27,7 @@
 
 ## The gasdev tools
 
-Development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
+Development tools for Apps Script libraries and projects. None of them is ever pushed to Apps Script.
 
 | Tool                    | Installed by                             | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ----------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1326,7 +1326,7 @@ npx gasdev github --fix   # create missing rulesets and update drifted ones
 
 Exit codes: `0` in sync (or fixed), `1` drift or failure, `2` usage error. Rulesets that are not in the template are reported but never changed or deleted. The command is not part of `check`, which stays offline. See [ADR 0009](docs/adr/0009-github-rulesets.md).
 
-## Migrating a gas-\* project
+## Migrating an existing project
 
 1. Add `gasdev` and the peer dependencies to `devDependencies` (see [Install](#install)).
 2. Set `"prettier": "gasdev/prettier"` in `package.json` and delete `.prettierrc.json`.
