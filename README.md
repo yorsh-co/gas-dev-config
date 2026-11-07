@@ -23,7 +23,7 @@
 - `gasdev setup` and `gasdev deploy` take an Apps Script web app from a guided first-time setup to clasp-based CI deployment, with a reusable GitHub Actions workflow
 - Plain ESM JavaScript, no build step
 
-<a id="gas-dev-tools"></a>
+<a id="gasdev-tools"></a>
 
 ## The gasdev tools
 
