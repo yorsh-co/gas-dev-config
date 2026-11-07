@@ -553,6 +553,8 @@ function checkScripts(pkg, preset, gasTest) {
   const drift = [];
   const required = { ...template.required, ...(gasTest && template.gasTest) };
   for (const [name, wanted] of Object.entries(required)) {
+    // Matches the template's `check` wording literally; if it changes this is a no-op,
+    // which test/check.test.js ("requires the coverage gate in this package itself") catches.
     const expected = isSelf
       ? wanted
           .replace('gasdev check', `${SELF_BIN} check`)
