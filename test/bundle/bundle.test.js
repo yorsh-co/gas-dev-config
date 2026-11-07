@@ -329,16 +329,16 @@ describe('library metadata', () => {
       });
   }
 
-  it('requires gasLibrary and points at gas-dev-release', () => {
+  it('requires gasLibrary and points at gas-dev-config release', () => {
     expect(bundleOne({ version: '1.0.0', gasLibrary: null })).toThrow(
-      /gas-a: package\.json has no gasLibrary\.loadOrder; gas-a needs a release made with gas-dev-release >= 1\.1\.0 and gasDevConfig\.loadOrder/,
+      /gas-a: package\.json has no gasLibrary\.loadOrder; gas-a needs a release made with gas-dev-config release and gasDevConfig\.loadOrder/,
     );
   });
 
   it('rejects an empty loadOrder', () => {
     expect(
       bundleOne({ version: '1.0.0', gasLibrary: { loadOrder: [] } }),
-    ).toThrow(/gas-dev-release/);
+    ).toThrow(/gas-dev-config release/);
   });
 
   it('rejects a name mismatch', () => {

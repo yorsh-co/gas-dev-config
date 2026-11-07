@@ -3,6 +3,7 @@
 import { parseArgs } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
 import { main as bundleMain } from '../src/bundle/cli.js';
+import { main as releaseMain } from '../src/release/cli.js';
 import {
   CheckError,
   checkProject,
@@ -32,6 +33,7 @@ const USAGE = `Usage: gas-dev-config check [--fix]
        gas-dev-config gas-test run [--keep]
        gas-dev-config html [--check]
        gas-dev-config bundle
+       gas-dev-config release [--dry-run] [--target <branch>]...
        gas-dev-config peers sync [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
@@ -59,6 +61,8 @@ Commands:
                    declares the page as a string constant
   bundle           Bundle gas-* libraries from their dist tags into one global
                    script file (see "gasDevConfig.bundle"; run bundle --help)
+  release          Publish the build of a gas-* library to its dist branch(es)
+                   with tags (see "gasDevConfig.release"; run release --help)
   peers sync       Write src/internal/<peer>.peer.types.d.ts for each
                    "peers" entry from the peer's highest release tag that
                    satisfies its range (without the @version line); needs
@@ -96,6 +100,7 @@ function usageError(message) {
  */
 export async function main(argv) {
   if (argv[0] === 'bundle') return bundleMain(argv.slice(1));
+  if (argv[0] === 'release') return releaseMain(argv.slice(1));
   let parsed;
   try {
     parsed = parseArgs({

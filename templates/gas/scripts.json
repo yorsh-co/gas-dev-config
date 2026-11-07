@@ -1,7 +1,7 @@
 {
   "required": {
     "clean": "rimraf dist",
-    "release": "gas-dev-release",
+    "release": "gas-dev-config release",
     "build:format": "npm run check && npm run build && npm run format:dist",
     "build:release": "npm run build:format && npm run release",
     "lint": "eslint . && echo '✓ Lint passed'",

@@ -11,6 +11,7 @@ const KNOWN_KEYS = [
   'gasTest',
   'html',
   'bundle',
+  'release',
 ];
 const GAS_TEST_KEYS = ['scopes', 'scriptId'];
 const HTML_KEYS = ['entry', 'out', 'name'];
@@ -382,10 +383,12 @@ function resolveConfig(pkg) {
       `package.json: unknown "gasDevConfig" key(s): ${unknown.join(', ')} (expected: ${KNOWN_KEYS.join(', ')})`,
     );
   }
-  if (config['bundle'] !== undefined && !isRecord(config['bundle'])) {
-    throw new CheckError(
-      'package.json: "gasDevConfig.bundle" must be an object',
-    );
+  for (const key of ['bundle', 'release']) {
+    if (config[key] !== undefined && !isRecord(config[key])) {
+      throw new CheckError(
+        `package.json: "gasDevConfig.${key}" must be an object`,
+      );
+    }
   }
   const preset = config['preset'] ?? 'gas';
   if (typeof preset !== 'string' || !PRESETS.includes(preset)) {
