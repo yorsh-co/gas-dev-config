@@ -1394,6 +1394,7 @@ There is no moving major tag; bump the tag on each release.
 - `gasdev gas-test run` no longer needs clasp on `PATH`; it resolves it from `node_modules`.
 - Cache paths move to `node_modules/.cache/gasdev`. Delete the old `node_modules/.cache/gas-dev-config` and `gas-dev-bundle` directories.
 - Contributors: the environment variable `GAS_DEV_CONFIG_NETWORK` is now `GASDEV_NETWORK`.
+- Node.js `^22.15.0` is now required (was `^22.13.0`); see [ADR 0021](docs/adr/0021-node-22-15-floor.md).
 
 ## License
 
