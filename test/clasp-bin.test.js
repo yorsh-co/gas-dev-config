@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveClaspBin, resolveProjectClaspBin } from '../src/clasp-bin.js';
 
@@ -27,7 +28,7 @@ describe('resolveProjectClaspBin', () => {
     );
     expect(resolve).toHaveBeenCalledTimes(1);
     expect(String(resolve.mock.calls[0]?.[0])).toBe(
-      'file:///project/package.json',
+      pathToFileURL(join('/project', 'package.json')).href,
     );
   });
 
