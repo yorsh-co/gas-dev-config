@@ -571,6 +571,9 @@ function checkScripts(pkg, preset, gasTest) {
       });
     }
   }
+  if (isSelf && scripts['test:coverage'] === undefined) {
+    drift.push({ file, message: 'scripts.test:coverage is missing' });
+  }
   for (const name of template.present) {
     if (scripts[name] === undefined) {
       drift.push({ file, message: `scripts.${name} is missing` });
