@@ -11,8 +11,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BundleError, bundle } from '../src/bundle/index.js';
+import { resolveClaspBin } from '../src/clasp-bin.js';
 import ts from 'typescript';
 import { loadConfig } from './check.js';
 
@@ -29,8 +30,8 @@ const RUNTIME = fileURLToPath(
 );
 const RESULT = /@@GAS_TEST@@([A-Za-z0-9+/=]+)@@END@@/;
 const SCOPE_PROBLEM = /scope|PERMISSION_DENIED|insufficient/i;
-const INSTALL_HINT =
-  'clasp was not found on PATH. Install it with `npm install -D @google/clasp`, then run `clasp login`.';
+export const INSTALL_HINT =
+  '@google/clasp is not installed. Install it with `npm install -D @google/clasp`, then run `npx clasp login`.';
 
 /**
  * @typedef {object} TestResult
@@ -179,26 +180,42 @@ export function runBuild(cwd, { out }) {
 }
 
 /**
- * Runs clasp without a shell.
+ * Locates clasp: the project's own install first, then the one next to this package.
  *
+ * @param {string} root Project root.
+ * @param {(from?: string | URL) => string} [resolve] Bin resolver.
+ * @returns {string}
+ * @throws {GasTestError} When clasp is not installed.
+ */
+export function claspBin(root, resolve = resolveClaspBin) {
+  try {
+    return resolve(pathToFileURL(join(root, 'package.json')));
+  } catch {
+    try {
+      return resolve();
+    } catch {
+      throw new GasTestError(INSTALL_HINT);
+    }
+  }
+}
+
+/**
+ * Runs clasp through the current Node binary, without a shell or PATH lookup.
+ *
+ * @param {string} bin Path of the clasp bin script.
  * @param {string[]} args
  * @param {string} cwd
  * @returns {import('node:child_process').SpawnSyncReturns<string>}
  * @throws {GasTestError} When clasp cannot be started.
  */
-function clasp(args, cwd) {
-  const result = spawnSync('clasp', args, {
+function clasp(bin, args, cwd) {
+  const result = spawnSync(process.execPath, [bin, ...args], {
     cwd,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
   if (result.error) {
-    const { code, message } = /** @type {Error & { code?: string }} */ (
-      result.error
-    );
-    throw new GasTestError(
-      code === 'ENOENT' ? INSTALL_HINT : `cannot run clasp: ${message}`,
-    );
+    throw new GasTestError(`cannot run clasp: ${result.error.message}`);
   }
   return result;
 }
@@ -214,12 +231,13 @@ function output(result) {
 /**
  * Runs a clasp command that must succeed.
  *
+ * @param {string} bin
  * @param {string[]} args
  * @param {string} cwd
  * @throws {GasTestError} With clasp's output when it exits non-zero.
  */
-function claspStep(args, cwd) {
-  const result = clasp(args, cwd);
+function claspStep(bin, args, cwd) {
+  const result = clasp(bin, args, cwd);
   if (result.status !== 0) {
     throw new GasTestError(
       `clasp ${args[0]} failed (exit ${result.status}):\n${output(result)}`,
@@ -232,14 +250,15 @@ function claspStep(args, cwd) {
  * `clasp clone` writes `.clasp.json`; everything else it fetched is removed so
  * `clasp push --force` replaces the whole project.
  *
+ * @param {string} bin Path of the clasp bin script.
  * @param {string} dir Empty directory.
  * @param {string} scriptId
  * @param {string[]} scopes
  * @param {string} code The built script.
  * @throws {GasTestError} When clasp fails.
  */
-function prepareProject(dir, scriptId, scopes, code) {
-  claspStep(['clone', scriptId, '--rootDir', dir], dir);
+function prepareProject(bin, dir, scriptId, scopes, code) {
+  claspStep(bin, ['clone', scriptId, '--rootDir', dir], dir);
   for (const name of readdirSync(dir)) {
     if (name !== '.clasp.json') rmSync(join(dir, name), { recursive: true });
   }
@@ -327,12 +346,14 @@ export function runRun(cwd, { keep = false }) {
   }
   const spreadsheetId = process.env['GAS_TEST_SPREADSHEET_ID'] || undefined;
   const code = buildGasTest(cwd, config);
+  const bin = claspBin(cwd);
 
   const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-run-'));
   try {
-    prepareProject(dir, scriptId, scopes, code);
-    claspStep(['push', '--force'], dir);
+    prepareProject(bin, dir, scriptId, scopes, code);
+    claspStep(bin, ['push', '--force'], dir);
     const run = clasp(
+      bin,
       [
         'run',
         'runGasTests',
@@ -349,7 +370,7 @@ export function runRun(cwd, { keep = false }) {
       );
       if (SCOPE_PROBLEM.test(text)) {
         process.stderr.write(
-          `The OAuth scopes may be missing. Run: clasp login --extra-scopes ${scopes.join(',')}\n`,
+          `The OAuth scopes may be missing. Run: npx clasp login --extra-scopes ${scopes.join(',')}\n`,
         );
       }
       return 1;

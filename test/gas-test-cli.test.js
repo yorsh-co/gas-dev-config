@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process';
 import {
-  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -9,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from './support.js';
 
@@ -20,8 +19,7 @@ const SCOPES = [
 ];
 
 /** Fake clasp: logs argv and project state, then prints canned output. */
-const FAKE_CLASP = `#!/usr/bin/env node
-const fs = require('node:fs');
+const FAKE_CLASP = `const fs = require('node:fs');
 const args = process.argv.slice(2);
 const entry = { args, cwd: process.cwd() };
 if (args[0] === 'clone') {
@@ -41,6 +39,14 @@ if (args[0] === 'run') {
   process.exit(Number(process.env.FAKE_CLASP_STATUS ?? 0));
 }
 `;
+
+/** Fake `@google/clasp` package, installed in each test project's node_modules. */
+const FAKE_CLASP_PACKAGE = JSON.stringify({
+  name: '@google/clasp',
+  version: '0.0.0',
+  main: 'index.js',
+  bin: { clasp: 'index.js' },
+});
 
 /** @type {string[]} */
 const dirs = [];
@@ -70,6 +76,10 @@ function createProject(gasDevConfig = {}) {
     join(dir, 'gas-test', 'lib.test.ts'),
     "test('lib', () => assert(LIB === 1));\n",
   );
+  const clasp = join(dir, 'node_modules', '@google', 'clasp');
+  mkdirSync(clasp, { recursive: true });
+  writeFileSync(join(clasp, 'package.json'), FAKE_CLASP_PACKAGE);
+  writeFileSync(join(clasp, 'index.js'), FAKE_CLASP);
   writeFileSync(
     join(dir, 'package.json'),
     JSON.stringify({
@@ -85,20 +95,17 @@ function createProject(gasDevConfig = {}) {
 }
 
 /**
- * Installs the fake clasp and returns the environment to run the CLI with.
+ * Returns the environment to run the CLI with. The fake clasp logs to a file; `PATH` has no clasp.
  *
  * @param {Record<string, string>} [extra]
  */
 function fakeEnv(extra = {}) {
-  const bin = tempDir();
   const log = join(tempDir(), 'clasp.log');
   writeFileSync(log, '');
-  writeFileSync(join(bin, 'clasp'), FAKE_CLASP);
-  chmodSync(join(bin, 'clasp'), 0o755);
   /** @type {NodeJS.ProcessEnv} */
   const env = {
     ...process.env,
-    PATH: `${bin}${delimiter}${dirname(process.execPath)}${delimiter}${process.env['PATH']}`,
+    PATH: tempDir(),
     FAKE_CLASP_LOG: log,
     ...extra,
   };
@@ -314,7 +321,7 @@ describe('gas-test run', () => {
     expect(result.stderr).toContain('nothing here');
     expect(result.stderr).toContain('PERMISSION_DENIED');
     expect(result.stderr).toContain(
-      `clasp login --extra-scopes ${SCOPES.join(',')}`,
+      `npx clasp login --extra-scopes ${SCOPES.join(',')}`,
     );
   });
 
@@ -327,18 +334,6 @@ describe('gas-test run', () => {
     const result = run(dir, ['gas-test', 'run'], env);
     expect(result.status).toBe(1);
     expect(result.stderr).not.toContain('--extra-scopes');
-  });
-
-  it('explains how to install clasp when it is missing', () => {
-    const dir = createProject();
-    const empty = tempDir();
-    const result = run(dir, ['gas-test', 'run'], {
-      ...process.env,
-      PATH: empty,
-    });
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('npm install -D @google/clasp');
-    expect(result.stderr).toContain('clasp login');
   });
 
   it('keeps the temporary project with --keep', () => {

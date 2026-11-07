@@ -3,7 +3,7 @@
 // flag the wrapper relies on must still exist in the bundled clasp CLI.
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { resolveClaspBin } from '../../src/ci/clasp.js';
+import { resolveClaspBin } from '../../src/clasp-bin.js';
 
 /**
  * Runs `clasp <args> --help` offline and returns its output.

@@ -425,8 +425,8 @@ With `gasTest` configured, `gas-dev-config check` requires these scripts with ex
 ### One-off setup
 
 1. Create a dedicated Apps Script project and link it to a standard Google Cloud project (project settings), which `clasp run` requires.
-2. Install clasp: `npm install -D @google/clasp`.
-3. Authorize the scopes: `clasp login --extra-scopes <comma-separated gasTest.scopes>`.
+2. Install clasp: `npm install -D @google/clasp`. `gas-test run` runs the clasp from the project's `node_modules`, not from `PATH`.
+3. Authorize the scopes: `npx clasp login --extra-scopes <comma-separated gasTest.scopes>`.
 4. Set `GAS_TEST_SCRIPT_ID` (or `gasTest.scriptId`) and, optionally, `GAS_TEST_SPREADSHEET_ID`.
 
 ### Running from the editor

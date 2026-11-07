@@ -2,10 +2,18 @@
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveClaspBin as resolveBin } from '../../src/clasp-bin.js';
 import { createClasp, resolveClaspBin } from '../../src/ci/clasp.js';
 import { DeployError } from '../../src/ci/errors.js';
 import { fakeClaspBin, readCalls } from './helpers/fake-clasp.js';
+
+vi.mock('../../src/clasp-bin.js', async (importOriginal) => {
+  const actual = /** @type {typeof import('../../src/clasp-bin.js')} */ (
+    await importOriginal()
+  );
+  return { ...actual, resolveClaspBin: vi.fn(actual.resolveClaspBin) };
+});
 
 const SECRET = 'super-secret-token';
 const STRIPPED = [
@@ -437,9 +445,20 @@ describe('createClasp setup commands', () => {
 });
 
 describe('resolveClaspBin', () => {
-  it('returns the installed clasp entry script', () => {
-    const bin = resolveClaspBin();
-    expect(existsSync(bin)).toBe(true);
-    expect(bin.endsWith(join('build', 'src', 'index.js'))).toBe(true);
+  it('wraps a resolution failure in a DeployError', () => {
+    vi.mocked(resolveBin).mockImplementationOnce(() => {
+      throw new Error(
+        'Could not resolve the @google/clasp bin; is it installed?',
+      );
+    });
+    expect(() => resolveClaspBin()).toThrow(DeployError);
+    vi.mocked(resolveBin).mockImplementationOnce(() => {
+      throw new Error(
+        'Could not resolve the @google/clasp bin; is it installed?',
+      );
+    });
+    expect(() => resolveClaspBin()).toThrow(
+      'Could not resolve the @google/clasp bin; is it installed?',
+    );
   });
 });

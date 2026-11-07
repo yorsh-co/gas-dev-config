@@ -1,15 +1,9 @@
 // @ts-check
 import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { createRequire } from 'node:module';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
+import { resolveClaspBin as resolveBin } from '../clasp-bin.js';
 import { DeployError } from './errors.js';
 
 const STRIPPED_ENV = new Set([
@@ -20,35 +14,17 @@ const STRIPPED_ENV = new Set([
 ]);
 
 /**
- * Resolves the entry script of the installed `@google/clasp`. Its `exports` map does not expose
- * `package.json`, so the package root is found by walking up from the resolved entry point.
+ * Resolves the installed `@google/clasp` bin.
  *
  * @returns {string}
+ * @throws {DeployError} When clasp is not installed.
  */
 export function resolveClaspBin() {
   try {
-    const require = createRequire(import.meta.url);
-    let dir = dirname(require.resolve('@google/clasp'));
-    for (;;) {
-      const pkgPath = join(dir, 'package.json');
-      if (existsSync(pkgPath)) {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-        if (pkg.name === '@google/clasp') {
-          const bin = typeof pkg.bin === 'string' ? pkg.bin : pkg.bin?.clasp;
-          if (typeof bin !== 'string') break;
-          return join(dir, bin);
-        }
-      }
-      const parent = dirname(dir);
-      if (parent === dir) break;
-      dir = parent;
-    }
-  } catch {
-    // Falls through to the error below.
+    return resolveBin();
+  } catch (error) {
+    throw new DeployError(/** @type {Error} */ (error).message);
   }
-  throw new DeployError(
-    'Could not resolve the @google/clasp bin; is it installed?',
-  );
 }
 
 /**
