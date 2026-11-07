@@ -31,6 +31,6 @@ describe('gasdev setup | deploy', () => {
   it('exits 1 with the inputs error when deploy has no credentials', () => {
     const result = run(['deploy']);
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('CLASPRC_JSON is not set');
+    expect(result.stderr).toMatch(/^gasdev: CLASPRC_JSON is not set/);
   });
 });

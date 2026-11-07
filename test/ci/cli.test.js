@@ -84,11 +84,11 @@ describe('main', () => {
     expect(deploy).toHaveBeenCalledWith(context);
   });
 
-  it('returns 1 and prints the message for a DeployError', async () => {
+  it('returns 1 and prints the prefixed message for a DeployError', async () => {
     const { context, err } = setup();
     vi.mocked(deploy).mockRejectedValueOnce(new DeployError('boom'));
     expect(await main(['deploy'], context)).toBe(1);
-    expect(err.join('')).toBe('boom\n');
+    expect(err.join('')).toBe('gasdev: boom\n');
   });
 
   it('lists both commands in --help', async () => {
