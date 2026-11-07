@@ -250,12 +250,13 @@ describe('deploy', () => {
 
   it('hands the real clasp only the temporary file, without CLASPRC_JSON', async () => {
     const log = join(root, 'clasp.log');
-    const { context } = setup({ FAKE_CLASP_LOG: log });
+    const { context, stdout } = setup({ FAKE_CLASP_LOG: log });
     await deploy({
       ...context,
       createClasp: (/** @type {any} */ options) =>
         createClasp({ ...options, bin: fakeClaspBin }),
     });
+    expect(stdout.text).toContain(`Using clasp: ${fakeClaspBin}\n`);
     const calls = readCalls(log);
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
@@ -490,6 +491,7 @@ describe('secret leakage', () => {
     expect(lines.slice(0, 2).sort()).toEqual(
       secrets.map((secret) => `::add-mask::${secret}`).sort(),
     );
+    expect(lines[2]).toBe('Using clasp: /fake/clasp.js');
     const rest = lines.slice(2).join('\n');
     expect(leaks(rest + s.output() + s.summary())).toBe(false);
   });
