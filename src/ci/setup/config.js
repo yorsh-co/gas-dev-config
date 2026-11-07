@@ -1,6 +1,7 @@
 // @ts-check
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
+import { legacyKeyMessage } from '../../legacy-keys.js';
 import { DeployError } from '../errors.js';
 
 const KNOWN_KEYS = ['title', 'steps'];
@@ -168,6 +169,10 @@ export function loadConfig(cwd) {
   const pkg = readJsonObject(join(cwd, 'package.json'), 'package.json');
   if (typeof pkg.name !== 'string' || pkg.name === '') {
     throw new DeployError('package.json has no "name".');
+  }
+  const legacy = legacyKeyMessage(pkg);
+  if (legacy) {
+    throw new DeployError(legacy);
   }
   const root = /** @type {{ ci?: unknown } | undefined} */ (pkg.gasdev);
   const { title, stepsPath } = validateOptions(root?.ci, cwd);

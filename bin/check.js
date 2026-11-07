@@ -1,6 +1,7 @@
 // @ts-check
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { legacyKeyMessage } from '../src/legacy-keys.js';
 import { HtmlError, compareModule } from './html.js';
 
 const PRESETS = ['gas', 'node'];
@@ -374,6 +375,10 @@ function parseHtml(value) {
  * @returns {ResolvedConfig}
  */
 function resolveConfig(pkg) {
+  const legacy = legacyKeyMessage(pkg);
+  if (legacy) {
+    throw new CheckError(legacy);
+  }
   const config = pkg['gasdev'] ?? {};
   if (!isRecord(config)) {
     throw new CheckError('package.json: "gasdev" must be an object');

@@ -369,6 +369,20 @@ describe('check (preset specifics)', () => {
     expect(run(dir, ['check']).status).toBe(0);
   });
 
+  it.each([
+    ['gasDevConfig', 'gasdev'],
+    ['gasDevBundle', 'gasdev.bundle'],
+    ['gasDevRelease', 'gasdev.release'],
+    ['gasDevCi', 'gasdev.ci'],
+  ])('rejects the legacy %s key', (legacy, replacement) => {
+    const dir = createCleanProject('gas', { [legacy]: {} });
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`"${legacy}"`);
+    expect(result.stderr).toContain(`"${replacement}"`);
+    expect(result.stderr).toContain('Migrating to 3.0');
+  });
+
   it('fails on an unknown preset', () => {
     const dir = createCleanProject('gas', { gasdev: { preset: 'web' } });
     const result = run(dir, ['check']);

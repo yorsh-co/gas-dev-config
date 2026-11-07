@@ -9,6 +9,14 @@ import { cleanup, createProject } from './helpers/project.js';
 afterEach(cleanup);
 
 describe('loadConfig', () => {
+  it('rejects a legacy gasDevCi key', () => {
+    const root = createProject({ pkg: { gasDevCi: {} } });
+    expect(() => loadConfig(root)).toThrow(DeployError);
+    expect(() => loadConfig(root)).toThrow(
+      /"gasDevCi".*"gasdev\.ci".*Migrating to 3\.0/,
+    );
+  });
+
   it('applies defaults', () => {
     const root = createProject();
     const config = loadConfig(root);

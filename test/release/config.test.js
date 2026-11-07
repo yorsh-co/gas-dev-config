@@ -4,6 +4,19 @@ import { cleanup, createProject, git, runRelease } from './helpers/project.js';
 
 afterEach(cleanup);
 
+describe('legacy config keys', () => {
+  it('rejects gasDevRelease', () => {
+    const { root } = createProject({ pkg: { gasDevRelease: {} } });
+
+    const result = runRelease(root);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('gasdev: package.json: "gasDevRelease"');
+    expect(result.stderr).toContain('"gasdev.release"');
+    expect(result.stderr).toContain('Migrating to 3.0');
+  });
+});
+
 describe('strict config validation', () => {
   it.each([
     [{ remtoe: 'origin' }, 'gasdev.release.remtoe is not a known option.'],

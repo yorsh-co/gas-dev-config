@@ -1,4 +1,6 @@
 // @ts-check
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { docsUrl, loadConfig } from '../../src/bundle/config.js';
 import { BundleError } from '../../src/bundle/errors.js';
@@ -13,6 +15,18 @@ const load = (bundleConfig) =>
   loadConfig(createProject(createSandbox(), bundleConfig));
 
 describe('loadConfig', () => {
+  it('rejects a legacy gasDevBundle key', () => {
+    const root = createProject(createSandbox());
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: 'app', gasDevBundle: {} }),
+    );
+    expect(() => loadConfig(root)).toThrow(BundleError);
+    expect(() => loadConfig(root)).toThrow(
+      /"gasDevBundle".*"gasdev\.bundle".*Migrating to 3\.0/,
+    );
+  });
+
   it('normalizes libraries and applies defaults', () => {
     expect(
       load({

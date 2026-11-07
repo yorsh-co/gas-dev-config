@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import semver from 'semver';
+import { legacyKeyMessage } from '../legacy-keys.js';
 import { BundleError } from './errors.js';
 
 /**
@@ -154,6 +155,10 @@ export function loadConfig(cwd) {
     throw new BundleError(
       `Cannot read package.json in ${cwd}: ${/** @type {Error} */ (error).message}`,
     );
+  }
+  const legacy = legacyKeyMessage(pkg);
+  if (legacy) {
+    throw new BundleError(legacy);
   }
   const parent = pkg.gasdev;
   const config = isObject(parent) ? parent.bundle : undefined;

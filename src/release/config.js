@@ -1,6 +1,7 @@
 // @ts-check
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import { legacyKeyMessage } from '../legacy-keys.js';
 import { ReleaseError } from './errors.js';
 
 /**
@@ -269,6 +270,10 @@ export function loadConfig(cwd) {
   }
   if (typeof pkg.version !== 'string' || pkg.version === '') {
     throw new ReleaseError('package.json has no "version".');
+  }
+  const legacy = legacyKeyMessage(pkg);
+  if (legacy) {
+    throw new ReleaseError(legacy);
   }
   const options = (isObject(pkg.gasdev) ? pkg.gasdev.release : undefined) ?? {};
   if (!isObject(options)) {
