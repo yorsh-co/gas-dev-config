@@ -53,7 +53,7 @@ A library release therefore runs: `npm run check` (presets, tests and `gasdev ch
 
 ## Requirements
 
-- Node.js ^22.13.0, ^24.0.0 or >=26.0.0
+- Node.js ^22.15.0, ^24.0.0 or >=26.0.0
 - Peer dependencies, which stay direct dev dependencies of your project so their binaries are linked:
   - `eslint` `^10.7.0`
   - `prettier` `^3.9.6`
