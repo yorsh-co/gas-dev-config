@@ -15,7 +15,12 @@
 - **BREAKING:** configuration lives under the `gasdev` package.json key, with `gasdev.bundle`, `gasdev.release` and `gasdev.ci` replacing the separate tool keys
 - `gasdev gas-test run` resolves clasp from `node_modules`
 - `@google/clasp` is a devDependency, with a `gaxios` override
+- gh plumbing and ruleset reads are shared in `src/gh.js` by the release ruleset checks and `gasdev github`
 - The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
+
+### Fixed
+
+- `gasdev github` reports non-JSON gh output as an error instead of crashing
 
 ### Removed
 
