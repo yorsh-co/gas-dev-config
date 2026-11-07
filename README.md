@@ -1,6 +1,45 @@
+<a id="readme-top"></a>
+
 # gasdev
 
 ## Local development toolkit for Google Apps Script: shared TypeScript, ESLint and Prettier config, testing, builds, releases and CI deployment.
+
+<details>
+<summary>Table of contents</summary>
+
+- [About gasdev](#about-gasdev)
+  - [Features](#features)
+  - [The gasdev tools](#the-gasdev-tools)
+- [Getting started](#getting-started)
+  - [Requirements](#requirements)
+  - [Install](#install)
+  - [Quick start](#quick-start)
+- [Tool reference](#tool-reference)
+  - [Prettier](#prettier)
+  - [TypeScript](#typescript)
+  - [ESLint](#eslint)
+  - [Test loader](#test-loader)
+  - [Apps Script tests](#apps-script-tests)
+  - [HTML build](#html-build)
+  - [Bundle](#bundle)
+  - [Release](#release)
+  - [Deploy a web app](#deploy-a-web-app)
+  - [Config check](#config-check)
+  - [Dependabot](#dependabot)
+  - [GitHub rulesets](#github-rulesets)
+- [Migrating an existing project](#migrating-an-existing-project)
+- [Migrating to 3.0](#migrating-to-30)
+  - [Dependencies](#dependencies)
+  - [Scripts](#scripts)
+  - [`package.json` keys](#packagejson-keys)
+  - [Imports and config references](#imports-and-config-references)
+  - [Workflow](#workflow-1)
+  - [Other changes](#other-changes)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
+
+</details>
 
 ## About gasdev
 
@@ -53,6 +92,8 @@ gasdev check             gasdev release               gasdev bundle
 
 A library release therefore runs: `npm run check` (presets, tests and `gasdev check`), `npm run test:gas` on the release branch (Apps Script tests, manual), then `npm run build:release` (build, then `gasdev release`).
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Getting started
 
 ### Requirements
@@ -96,6 +137,8 @@ For a new project:
 3. Run `npm install`, then `npm run check`.
 
 For an existing project, follow [Migrating an existing project](#migrating-an-existing-project).
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Tool reference
 
@@ -1344,6 +1387,8 @@ npx gasdev github --fix   # create missing rulesets and update drifted ones
 
 Exit codes: `0` in sync (or fixed), `1` drift or failure, `2` usage error. Rulesets that are not in the template are reported but never changed or deleted. The command is not part of `check`, which stays offline. See [ADR 0009](docs/adr/0009-github-rulesets.md).
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Migrating an existing project
 
 1. Add `gasdev` and the peer dependencies to `devDependencies` (see [Install](#install)).
@@ -1356,6 +1401,8 @@ Exit codes: `0` in sync (or fixed), `1` drift or failure, `2` usage error. Rules
 8. Add `gasdev check` to the `check` script (if `init` added it, this is already done) and align the scripts `init` did not change with what the check reports.
 9. Run `npm install`.
 10. Run `npm run check`. It must pass with no source changes: `prettier --check`, `eslint` and `tsc` are clean.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Migrating to 3.0
 
@@ -1414,6 +1461,8 @@ There is no moving major tag; bump the tag on each release.
 - Contributors: the environment variable `GAS_DEV_CONFIG_NETWORK` is now `GASDEV_NETWORK`.
 - Node.js `^22.15.0` is now required (was `^22.13.0`); see [ADR 0021](docs/adr/0021-node-22-15-floor.md).
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Contributing
 
 Run `npm run check` before opening a pull request. It runs the format check, lint, typecheck, coverage-gated tests and `gasdev check`.
@@ -1424,17 +1473,23 @@ Run `npm run check` before opening a pull request. It runs the format check, lin
 - Commits follow Conventional Commits.
 - Update `CHANGELOG.md` with every user-facing change.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## License
 
 MIT
 
 See the `LICENSE` file for details.
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Support
 
 Issues and feature requests are welcome via GitHub Issues.
 
 Maintained by [yorsh-co](https://github.com/yorsh-co).
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ---
 
