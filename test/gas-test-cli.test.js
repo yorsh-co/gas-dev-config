@@ -8,11 +8,17 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { registerHooks } from 'node:module';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { INSTALL_HINT } from '../bin/gas-test.js';
 import { REPO_ROOT } from './support.js';
 
 const BIN = join(REPO_ROOT, 'bin', 'gasdev.js');
+const HIDE_CLASP = pathToFileURL(
+  join(REPO_ROOT, 'test', 'fixtures', 'hide-clasp.mjs'),
+).href;
 const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/script.storage',
@@ -125,9 +131,10 @@ function fakeEnv(extra = {}) {
  * @param {string} cwd
  * @param {string[]} args
  * @param {NodeJS.ProcessEnv} [env]
+ * @param {string[]} [nodeArgs]
  */
-function run(cwd, args, env = process.env) {
-  const r = spawnSync(process.execPath, [BIN, ...args], {
+function run(cwd, args, env = process.env, nodeArgs = []) {
+  const r = spawnSync(process.execPath, [...nodeArgs, BIN, ...args], {
     cwd,
     env,
     encoding: 'utf8',
@@ -231,6 +238,29 @@ describe('gas-test run', () => {
     const result = run(dir, ['gas-test', 'run'], fakeEnv().env);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('"gasdev.gasTest" is required');
+  });
+
+  // `module.registerHooks` (Node 22.15+) is the only hook API that covers `require.resolve`.
+  it.skipIf(typeof registerHooks !== 'function')(
+    'prints the install hint when clasp cannot be resolved',
+    () => {
+      const dir = createProject();
+      const { env, entries } = fakeEnv();
+      const result = run(dir, ['gas-test', 'run'], env, [
+        '--import',
+        HIDE_CLASP,
+      ]);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(INSTALL_HINT);
+      expect(entries()).toEqual([]);
+    },
+  );
+
+  it('does not print the install hint when clasp resolves', () => {
+    const dir = createProject();
+    const { env } = fakeEnv();
+    const result = run(dir, ['gas-test', 'run'], env);
+    expect(result.stderr).not.toContain(INSTALL_HINT);
   });
 
   it('clones, pushes and runs, then prints results and cleans up', () => {
