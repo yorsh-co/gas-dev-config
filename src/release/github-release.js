@@ -147,7 +147,8 @@ export function findRelease(repo, tag, cwd) {
  * @param {string} tag Tag name.
  * @param {string} notes Release notes, passed on stdin.
  * @param {string} cwd Project root.
- * @throws {ReleaseError} With gh's stderr when gh is missing or exits non-zero.
+ * @throws {ReleaseError} With the install hint when gh is missing, or with gh's stderr (its exit
+ *   status if stderr is empty) when gh exits non-zero.
  */
 export function createRelease(repo, tag, notes, cwd) {
   const result = viaGh(() =>

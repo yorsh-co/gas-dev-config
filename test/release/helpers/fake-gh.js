@@ -27,6 +27,9 @@ if (command === 'release' && subcommand === 'view') {
     process.stderr.write('HTTP 422: Validation Failed\n');
     process.exit(1);
   }
+  if (process.env.FAKE_GH_CREATE === 'silent-fail') {
+    process.exit(1);
+  }
 } else if (command === 'api') {
   api(String(subcommand));
 } else {

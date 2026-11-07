@@ -22,6 +22,7 @@
 - `gasdev setup` and `gasdev deploy` resolve clasp from the project's `node_modules` first, falling back to the one next to gasdev, as `gas-test run` does; see ADR 0020
 - The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
 - Dev-only: a comment in `bin/check.js` notes that the self-test rewrite depends on the scripts template's `check` wording
+- Dev-only: a test covers `gasdev release` falling back to gh's exit status when `gh release create` fails without stderr
 
 ### Fixed
 
