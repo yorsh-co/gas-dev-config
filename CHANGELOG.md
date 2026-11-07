@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
+
 ---
 
 ## [2.2.0] - 2026-11-06
