@@ -24,6 +24,7 @@
 ### Fixed
 
 - `gasdev github` reports non-JSON gh output as an error instead of crashing
+- README lists `gasdev setup` and `gasdev deploy`, not only `gasdev gas-test run`, as needing `@google/clasp`
 
 ### Removed
 

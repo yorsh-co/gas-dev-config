@@ -58,7 +58,7 @@ A library release therefore runs: `npm run check` (presets, tests and `gasdev ch
   - `eslint` `^10.7.0`
   - `prettier` `^3.9.6`
   - `typescript` `^5.9.3`
-  - `@google/clasp` `^3.4.1`, optional: only for `gasdev gas-test run`
+  - `@google/clasp` `^3.4.1`, optional: needed by `gasdev gas-test run`, `gasdev setup` and `gasdev deploy`
 - `@types/google-apps-script`, and `@types/node` for projects with tests, as your own dev dependencies
 
 > [!IMPORTANT]
