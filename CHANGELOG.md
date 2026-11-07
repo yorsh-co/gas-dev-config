@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [3.0.0] - 2026-11-07
+
 ### Added
 
 - `gasdev bundle`, `gasdev release`, `gasdev setup` and `gasdev deploy` subcommands, folding in gas-dev-bundle, gas-dev-release and gas-dev-ci; the `gasdev/bundle` and `gasdev/ci` exports; and a reusable `gas-deploy` workflow; see ADRs 0010-0019
