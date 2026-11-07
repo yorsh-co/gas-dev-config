@@ -11,9 +11,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { BundleError, bundle } from '../src/bundle/index.js';
-import { resolveClaspBin } from '../src/clasp-bin.js';
+import { resolveProjectClaspBin } from '../src/clasp-bin.js';
 import ts from 'typescript';
 import { loadConfig } from './check.js';
 
@@ -182,15 +182,11 @@ export function runBuild(cwd, { out }) {
  * @returns {string}
  * @throws {GasTestError} When clasp is not installed.
  */
-export function claspBin(root, resolve = resolveClaspBin) {
+export function claspBin(root, resolve) {
   try {
-    return resolve(pathToFileURL(join(root, 'package.json')));
+    return resolveProjectClaspBin(root, resolve);
   } catch {
-    try {
-      return resolve();
-    } catch {
-      throw new GasTestError(INSTALL_HINT);
-    }
+    throw new GasTestError(INSTALL_HINT);
   }
 }
 

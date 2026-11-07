@@ -1,9 +1,16 @@
 // @ts-check
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resolveClaspBin as resolveBin } from '../../src/clasp-bin.js';
+import { resolveProjectClaspBin as resolveBin } from '../../src/clasp-bin.js';
 import { createClasp, resolveClaspBin } from '../../src/ci/clasp.js';
 import { DeployError } from '../../src/ci/errors.js';
 import { fakeClaspBin, readCalls } from './helpers/fake-clasp.js';
@@ -12,7 +19,10 @@ vi.mock('../../src/clasp-bin.js', async (importOriginal) => {
   const actual = /** @type {typeof import('../../src/clasp-bin.js')} */ (
     await importOriginal()
   );
-  return { ...actual, resolveClaspBin: vi.fn(actual.resolveClaspBin) };
+  return {
+    ...actual,
+    resolveProjectClaspBin: vi.fn(actual.resolveProjectClaspBin),
+  };
 });
 
 const SECRET = 'super-secret-token';
@@ -46,6 +56,12 @@ describe('createClasp', () => {
       redact,
       bin: fakeClaspBin,
     });
+
+  it("resolves the project's clasp from cwd when no bin is given", () => {
+    vi.mocked(resolveBin).mockClear();
+    createClasp({ cwd: '/project', env: {} });
+    expect(resolveBin).toHaveBeenCalledWith('/project');
+  });
 
   it('pushes with --force in the working directory', () => {
     make().push();
@@ -451,14 +467,37 @@ describe('resolveClaspBin', () => {
         'Could not resolve the @google/clasp bin; is it installed?',
       );
     });
-    expect(() => resolveClaspBin()).toThrow(DeployError);
+    expect(() => resolveClaspBin('/project')).toThrow(DeployError);
     vi.mocked(resolveBin).mockImplementationOnce(() => {
       throw new Error(
         'Could not resolve the @google/clasp bin; is it installed?',
       );
     });
-    expect(() => resolveClaspBin()).toThrow(
+    expect(() => resolveClaspBin('/project')).toThrow(
       'Could not resolve the @google/clasp bin; is it installed?',
     );
+  });
+
+  it("resolves the project's clasp before the one next to this package", () => {
+    const root = mkdtempSync(join(tmpdir(), 'gasdev-proj-'));
+    try {
+      const pkgDir = join(root, 'node_modules', '@google', 'clasp');
+      mkdirSync(pkgDir, { recursive: true });
+      writeFileSync(join(root, 'package.json'), '{}');
+      writeFileSync(
+        join(pkgDir, 'package.json'),
+        JSON.stringify({
+          name: '@google/clasp',
+          main: 'bin.js',
+          bin: { clasp: 'bin.js' },
+        }),
+      );
+      writeFileSync(join(pkgDir, 'bin.js'), '');
+      expect(realpathSync(resolveClaspBin(root))).toBe(
+        realpathSync(join(pkgDir, 'bin.js')),
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
