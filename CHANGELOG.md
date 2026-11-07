@@ -25,6 +25,7 @@
 - Dev-only: a test covers `gasdev release` falling back to gh's exit status when `gh release create` fails without stderr
 - **BREAKING:** `gasdev deploy` errors are prefixed with `gasdev:`, matching `setup` and the other commands
 - `gasdev deploy` prints the clasp it runs (`Using clasp: <path>`); see ADR 0022
+- Dev-only: coverage includes spawned `bin/*` and helper processes (`autoAttachSubprocess`), with thresholds ratcheted to 78/69/73/78
 
 ### Fixed
 
