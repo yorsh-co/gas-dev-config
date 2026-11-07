@@ -355,7 +355,20 @@ describe('check (preset specifics)', () => {
     expect(run(dir, ['check']).status).toBe(0);
   });
 
-  it('accepts the local bin in this package itself', () => {
+  it('accepts the local bin and coverage gate in this package itself', () => {
+    const dir = createCleanProject('node', {
+      gasdev: { preset: 'node' },
+    });
+    const pkg = readPackage(dir);
+    pkg.name = 'gasdev';
+    pkg.scripts.check = pkg.scripts.check
+      .replace('gasdev check', 'node bin/gasdev.js check')
+      .replace('npm run test &&', 'npm run test:coverage &&');
+    writePackage(dir, pkg);
+    expect(run(dir, ['check']).status).toBe(0);
+  });
+
+  it('requires the coverage gate in this package itself', () => {
     const dir = createCleanProject('node', {
       gasdev: { preset: 'node' },
     });
@@ -366,7 +379,9 @@ describe('check (preset specifics)', () => {
       'node bin/gasdev.js check',
     );
     writePackage(dir, pkg);
-    expect(run(dir, ['check']).status).toBe(0);
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('npm run test:coverage &&');
   });
 
   it.each([

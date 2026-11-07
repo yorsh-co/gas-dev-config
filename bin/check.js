@@ -72,6 +72,8 @@ const TEMPLATES = new URL('../templates/', import.meta.url);
 
 /** Local invocation used in place of the `gasdev` bin by this package itself. */
 const SELF_BIN = 'node bin/gasdev.js';
+/** Coverage-gated test step this package runs in place of `npm run test`. */
+const SELF_TEST = 'npm run test:coverage';
 
 /**
  * @typedef {object} Drift
@@ -552,7 +554,9 @@ function checkScripts(pkg, preset, gasTest) {
   const required = { ...template.required, ...(gasTest && template.gasTest) };
   for (const [name, wanted] of Object.entries(required)) {
     const expected = isSelf
-      ? wanted.replace('gasdev check', `${SELF_BIN} check`)
+      ? wanted
+          .replace('gasdev check', `${SELF_BIN} check`)
+          .replace('npm run test &&', `${SELF_TEST} &&`)
       : wanted;
     const found = scripts[name];
     if (found === undefined) {
