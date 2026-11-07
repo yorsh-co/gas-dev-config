@@ -4,7 +4,14 @@ import { dirname, join } from 'node:path';
 import { HtmlError, compareModule } from './html.js';
 
 const PRESETS = ['gas', 'node'];
-const KNOWN_KEYS = ['preset', 'loadOrder', 'peers', 'gasTest', 'html'];
+const KNOWN_KEYS = [
+  'preset',
+  'loadOrder',
+  'peers',
+  'gasTest',
+  'html',
+  'bundle',
+];
 const GAS_TEST_KEYS = ['scopes', 'scriptId'];
 const HTML_KEYS = ['entry', 'out', 'name'];
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
@@ -373,6 +380,11 @@ function resolveConfig(pkg) {
   if (unknown.length > 0) {
     throw new CheckError(
       `package.json: unknown "gasDevConfig" key(s): ${unknown.join(', ')} (expected: ${KNOWN_KEYS.join(', ')})`,
+    );
+  }
+  if (config['bundle'] !== undefined && !isRecord(config['bundle'])) {
+    throw new CheckError(
+      'package.json: "gasDevConfig.bundle" must be an object',
     );
   }
   const preset = config['preset'] ?? 'gas';

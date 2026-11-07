@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BundleError, bundle } from 'gas-dev-bundle';
+import { BundleError, bundle } from '../src/bundle/index.js';
 import ts from 'typescript';
 import { loadConfig } from './check.js';
 
@@ -119,7 +119,7 @@ function testFiles(cwd) {
 
 /**
  * Builds the self-contained Apps Script test file: peers, the library in load
- * order, the test runtime and the tests, validated by `gas-dev-bundle`. The
+ * order, the test runtime and the tests, validated by the bundle module. The
  * first line is unique per build because `clasp push --force` skips the push
  * when every local file equals the remote, which would leave stale files.
  *

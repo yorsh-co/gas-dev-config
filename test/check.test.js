@@ -394,8 +394,22 @@ describe('check (preset specifics)', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('unknown "gasDevConfig" key(s): presets');
     expect(result.stderr).toContain(
-      '(expected: preset, loadOrder, peers, gasTest, html)',
+      '(expected: preset, loadOrder, peers, gasTest, html, bundle)',
     );
+  });
+
+  it('accepts a gasDevConfig.bundle object', () => {
+    const dir = createCleanProject('gas', {
+      gasDevConfig: { bundle: { libraries: {} } },
+    });
+    expect(run(dir, ['check']).status).toBe(0);
+  });
+
+  it('rejects a non-object gasDevConfig.bundle', () => {
+    const dir = createCleanProject('gas', { gasDevConfig: { bundle: 'x' } });
+    const result = run(dir, ['check']);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('"gasDevConfig.bundle" must be an object');
   });
 
   it('fails when package.json is missing', () => {

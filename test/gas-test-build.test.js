@@ -14,7 +14,7 @@ let captured = [];
 /** @type {any} */
 let options;
 
-vi.mock('gas-dev-bundle', () => ({
+vi.mock('../src/bundle/index.js', () => ({
   BundleError: class BundleError extends Error {},
   bundle: vi.fn((/** @type {any} */ opts) => {
     options = opts;

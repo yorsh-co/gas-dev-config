@@ -26,16 +26,15 @@
 
 ## The gas-dev-\* tools
 
-Four development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
+Three development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
 
-| Tool                                                             | Installed by                                        | Purpose                                                                                                                                                                                                                                                                                      |
-| ---------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gas-dev-config` (this package)                                  | Library authors                                     | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); peer type sync (`peers sync`); GitHub rulesets (`github`)       |
-| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                                     | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                                                                                 |
-| [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle)   | Apps Script projects using several gas-\* libraries | Resolves version ranges against the `dist/vX.Y.Z` tags and writes the libraries into one script, ordered by their `gasLibrary` metadata                                                                                                                                                      |
-| [`gas-dev-ci`](https://github.com/yorsh-co/gas-dev-ci)           | Apps Script projects that deploy a web app          | `setup`: clasp login, project, `.clasp.json` and manifest from the `.example.json` templates, push and a guided manual web-app deployment recorded in `.env`, project-defined steps through `gasDevCi.steps`; `deploy` and a reusable GitHub Actions workflow that push and redeploy from CI |
+| Tool                                                             | Installed by                               | Purpose                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gas-dev-config` (this package)                                  | Library authors                            | Prettier, TypeScript and ESLint presets; `check` for config drift; the `gasDevConfig` key (`loadOrder`, `peers`, `gasTest`, `html`); the Vitest loader; Apps Script tests (`gas-test build`/`run`); the HTML build (`html`); bundling gas-\* libraries (`bundle`); peer type sync (`peers sync`); GitHub rulesets (`github`) |
+| [`gas-dev-release`](https://github.com/yorsh-co/gas-dev-release) | Library authors                            | Publishes the build to the `dist` branch, tagged `dist/vX.Y.Z`, with a release `package.json` that carries `gasLibrary` metadata derived from `gasDevConfig`                                                                                                                                                                 |
+| [`gas-dev-ci`](https://github.com/yorsh-co/gas-dev-ci)           | Apps Script projects that deploy a web app | `setup`: clasp login, project, `.clasp.json` and manifest from the `.example.json` templates, push and a guided manual web-app deployment recorded in `.env`, project-defined steps through `gasDevCi.steps`; `deploy` and a reusable GitHub Actions workflow that push and redeploy from CI                                 |
 
-Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries needs only `gas-dev-bundle` (a single library can be added with `git subtree` instead); a project that deploys a web app adds `gas-dev-ci`.
+Each is a dev dependency installed from GitHub with a `#semver:` range. A library uses `gas-dev-config` and `gas-dev-release`; a project consuming several libraries uses `gas-dev-config bundle` (a single library can be added with `git subtree` instead); a project that deploys a web app adds `gas-dev-ci`.
 
 The tools are connected by one piece of metadata, declared once in the library:
 
@@ -46,10 +45,10 @@ library package.json            dist/vX.Y.Z package.json          consumer proje
   "peers": {...}                  "peers": {...}                   in load order)
 }                               }
 validated by                    written by                        written by
-gas-dev-config check            gas-dev-release                   gas-dev-bundle
+gas-dev-config check            gas-dev-release                   gas-dev-config bundle
 ```
 
-The only code dependency between them: `gas-dev-config gas-test build` uses `gas-dev-bundle` to bundle a library's peers ahead of the library under test.
+`gas-dev-config gas-test build` uses the same bundler as `gas-dev-config bundle` to bundle a library's peers ahead of the library under test.
 
 A library release therefore runs: `npm run check` (presets, tests and `gas-dev-config check`), `npm run test:gas` on the release branch (Apps Script tests, manual), then `npm run build:release` (build, then `gas-dev-release`).
 
@@ -418,7 +417,7 @@ With `gasTest` configured, `gas-dev-config check` requires these scripts with ex
 }
 ```
 
-- `gas-dev-config gas-test build [--out <file>]` transpiles (without type-checking) the `loadOrder` files and `gas-test/*.ts`, bundles the `peers` with [`gas-dev-bundle`](https://github.com/yorsh-co/gas-dev-bundle) and writes the script to `--out`, by default `node_modules/.cache/gas-dev-config/gas-test.js`. The first line is a unique build stamp, because `clasp push --force` skips the push when every local file matches the remote.
+- `gas-dev-config gas-test build [--out <file>]` transpiles (without type-checking) the `loadOrder` files and `gas-test/*.ts`, bundles the `peers` with the [`bundle`](#bundle) module and writes the script to `--out`, by default `node_modules/.cache/gas-dev-config/gas-test.js`. The first line is a unique build stamp, because `clasp push --force` skips the push when every local file matches the remote.
 - `gas-dev-config gas-test run [--keep]` builds, pushes the script to the test project with clasp, runs `runGasTests` and prints one line per result and the summary. It exits `1` when a test fails or no results come back. With `--keep`, the temporary project directory is kept and its path printed. `GAS_TEST_SPREADSHEET_ID` is passed to `runGasTests`.
 
 > [!WARNING]
@@ -442,7 +441,7 @@ Run `npm run test:gas:build`, paste the generated file into the Apps Script edit
 
 ## HTML build
 
-A library that ships an HtmlService UI edits it as `.html`, `.css` and TypeScript files, but Apps Script needs it as source files that gas-dev-bundle (`.js` only), git subtree, the Vitest loader and gas-dev-release already handle. `gas-dev-config html` inlines the page and writes it as a `.ts` file that declares the whole page as one string constant, listed in `loadOrder` like any other source.
+A library that ships an HtmlService UI edits it as `.html`, `.css` and TypeScript files, but Apps Script needs it as source files that `gas-dev-config bundle` (`.js` only), git subtree, the Vitest loader and gas-dev-release already handle. `gas-dev-config html` inlines the page and writes it as a `.ts` file that declares the whole page as one string constant, listed in `loadOrder` like any other source.
 
 ### Configuration
 
@@ -516,6 +515,110 @@ gas-dev-config html [--check]
 1. Make `build:frontend` run `gas-dev-config html` after the frontend compile, for example `tsc -p tsconfig.frontend.json && gas-dev-config html`.
 2. Commit the generated file: tests, Apps Script tests and type-checking load it from `loadOrder`.
 3. `npm run check` fails with drift when it is stale, because `gas-dev-config check` is part of it. No script of the project is required by this feature.
+
+<a id="bundle"></a>
+
+## Bundle
+
+`gas-dev-config bundle` bundles gas-\* libraries from their `dist/vX.Y.Z` tags into one global script file, in an Apps Script project that uses several libraries.
+
+- Resolves each library to the highest `dist/vX.Y.Z` tag that satisfies a semver range, so upgrades are a version bump instead of a `git subtree pull`
+- Orders libraries by their declared load order, with peers before the libraries that use them
+- Reproducible output: no timestamps, and a header recording each library's version and full commit SHA
+- Validates the bundle with `node --check` before writing anything; optional concatenated `.d.ts` file for the libraries' global declarations
+- Libraries must be released with `gas-dev-release` >= 1.1.0 and `gasDevConfig.loadOrder`, so each tag carries `gasLibrary` metadata; git must reach the libraries' repositories
+
+### Configuration
+
+Configure the libraries in the project's `package.json`, then run `gas-dev-config bundle` in the project root:
+
+```json
+{
+  "gasDevConfig": {
+    "bundle": {
+      "libraries": {
+        "gas-sheetdb": "^2.1.0",
+        "gas-lock": {
+          "version": "^1.2.0",
+          "repository": "https://github.com/me/gas-lock.git"
+        }
+      },
+      "outFile": "src/lib/gas-libraries.js",
+      "typesFile": "types/gas-libraries.d.ts"
+    }
+  }
+}
+```
+
+| Key         | Type   | Default                | Description                                                                    |
+| ----------- | ------ | ---------------------- | ------------------------------------------------------------------------------ |
+| `libraries` | object | required               | Non-empty map of library name to a semver range, or `{ version, repository? }` |
+| `outFile`   | string | `src/gas-libraries.js` | Bundle path, relative to the project root; no `..`; must end in `.js`          |
+| `typesFile` | string | none                   | Declarations path, relative to the project root; no `..`; must end in `.d.ts`  |
+
+Library names match `/^[a-z0-9][a-z0-9._-]*$/`. `version` must be a valid semver range. `repository` is a non-empty Git URL or path and defaults to `https://github.com/yorsh-co/<name>.git`. Unknown keys are rejected with their path, e.g. `gasDevConfig.bundle.libraries.gas-lock.repositry is not a known option.`
+
+`gas-dev-config bundle` takes only `-h`/`--help` and `--version`. It prints one line per bundled library (name, version, short SHA, docs link), the written paths and a reminder about load order. Exit code `0` means the bundle was written, `1` a failure (`gas-dev-config: <message>`) and `2` invalid usage.
+
+> [!IMPORTANT]
+> Apps Script loads files in `filePushOrder` or, by default, alphabetically. `outFile` must load before any project code that uses the library globals at top level.
+
+### How versions are resolved
+
+For each library the tool runs `git ls-remote --tags --refs <repository> 'refs/tags/dist/v*'`, parses the `dist/vX.Y.Z` tags (tags that are not valid semver are ignored) and picks `semver.maxSatisfying` for the range. If nothing matches, the error names the library, the range and the available versions. The chosen tag is fetched with a shallow clone and its commit SHA is recorded in the bundle header. Prereleases are only considered when the range itself names one.
+
+### Load order and peers
+
+Each library's `package.json` on its dist tag declares how it loads:
+
+```json
+{
+  "name": "gas-sheetdb",
+  "version": "2.1.0",
+  "gasLibrary": {
+    "loadOrder": ["gas-sheetdb.errors.js", "sub/x.js"],
+    "peers": { "gas-lock": "^1.1.0" }
+  }
+}
+```
+
+- `loadOrder` is required: a non-empty list of relative `.js` paths that exist in the tag. The package `name` must equal the configured name.
+- `peers` are optional libraries used when present. A configured peer whose resolved version does not satisfy the range prints a warning to stderr and the bundle is still written.
+- Libraries are ordered topologically by peers; ties keep the config order. A cycle is an error naming the libraries involved.
+
+Every file is emitted under a `// ---- <library>/<path> ----` marker with its `"use strict";` lines removed, because directives mid-file have no effect in a concatenated script. A single `'use strict';` follows the header instead.
+
+```js
+// Generated by gas-dev-config bundle — do not edit. Run `npx gas-dev-config bundle` to update.
+// gas-lock 1.2.0 (<full sha>)
+//   https://github.com/yorsh-co/gas-lock/tree/dist/v1.2.0
+
+'use strict';
+
+// ---- gas-lock/gas-lock.constants.js ----
+```
+
+With `typesFile` set, every `.d.ts` file in each library is concatenated under the same header and per-file markers. Include the file in your `tsconfig.json` so the globals are declared in your project.
+
+### Cache
+
+Fetched libraries are cached in `<project>/node_modules/.cache/gas-dev-config/bundle/<name>@<version>/`. A fetch clones into a temporary sibling directory, records the commit SHA in `.gas-dev-config-bundle.json`, removes `.git` and renames the directory into place, so an interrupted fetch never looks cached. A complete entry fetched from the same repository is reused; delete the directory to force a fresh fetch. Version resolution always queries the remote.
+
+### Programmatic API
+
+```js
+import { bundle, loadConfig } from 'gas-dev-config/bundle';
+
+const { code, types, resolved } = bundle({
+  libraries: { 'gas-lock': '^1.2.0' },
+  cwd: process.cwd(),
+  extraFiles: ['/abs/path/dist/my-lib.js'],
+});
+```
+
+`libraries` has the shape of `gasDevConfig.bundle.libraries`; `cwd` defaults to `process.cwd()`; `cacheDir` to `<cwd>/node_modules/.cache/gas-dev-config/bundle`; `extraFiles` are absolute `.js` paths appended after the libraries; `warn` receives peer warnings (default: stderr). `bundle()` returns `{ code, types, resolved }` and writes nothing outside the cache; `loadConfig(cwd)` returns the validated `gasDevConfig.bundle`. Failures throw `BundleError`.
+
+Do not vendor a library with `git subtree` and bundle it too: its globals would be declared twice.
 
 ## Config check
 

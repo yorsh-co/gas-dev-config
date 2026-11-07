@@ -2,6 +2,7 @@
 // @ts-check
 import { parseArgs } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
+import { main as bundleMain } from '../src/bundle/cli.js';
 import {
   CheckError,
   checkProject,
@@ -30,6 +31,7 @@ const USAGE = `Usage: gas-dev-config check [--fix]
        gas-dev-config gas-test build [--out <file>]
        gas-dev-config gas-test run [--keep]
        gas-dev-config html [--check]
+       gas-dev-config bundle
        gas-dev-config peers sync [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
@@ -55,6 +57,8 @@ Commands:
   html             Inline each "html" entry's local stylesheets and scripts
                    (TypeScript is transpiled) into a generated .ts file that
                    declares the page as a string constant
+  bundle           Bundle gas-* libraries from their dist tags into one global
+                   script file (see "gasDevConfig.bundle"; run bundle --help)
   peers sync       Write src/internal/<peer>.peer.types.d.ts for each
                    "peers" entry from the peer's highest release tag that
                    satisfies its range (without the @version line); needs
@@ -88,9 +92,10 @@ function usageError(message) {
  * Runs the CLI.
  *
  * @param {string[]} argv Command-line arguments, without the node and script paths.
- * @returns {number} The process exit code: 0 when clean, 1 on drift or error, 2 on invalid usage.
+ * @returns {Promise<number>} The process exit code: 0 when clean, 1 on drift or error, 2 on invalid usage.
  */
-export function main(argv) {
+export async function main(argv) {
+  if (argv[0] === 'bundle') return bundleMain(argv.slice(1));
   let parsed;
   try {
     parsed = parseArgs({
@@ -182,4 +187,4 @@ export function main(argv) {
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+process.exitCode = await main(process.argv.slice(2));
