@@ -14,7 +14,7 @@
     "homepage": "https://yorsh.co"
   },
   "engines": {
-    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
+    "node": "^22.15.0 || ^24.0.0 || >=26.0.0"
   },
   "type": "module",
   "bin": {

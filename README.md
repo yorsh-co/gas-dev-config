@@ -53,7 +53,7 @@ A library release therefore runs: `npm run check` (presets, tests and `gasdev ch
 
 ## Requirements
 
-- Node.js ^22.13.0, ^24.0.0 or >=26.0.0
+- Node.js ^22.15.0, ^24.0.0 or >=26.0.0
 - Peer dependencies, which stay direct dev dependencies of your project so their binaries are linked:
   - `eslint` `^10.7.0`
   - `prettier` `^3.9.6`
@@ -1394,6 +1394,7 @@ There is no moving major tag; bump the tag on each release.
 - `gasdev gas-test run` no longer needs clasp on `PATH`; it resolves it from `node_modules`.
 - Cache paths move to `node_modules/.cache/gasdev`. Delete the old `node_modules/.cache/gas-dev-config` and `gas-dev-bundle` directories.
 - Contributors: the environment variable `GAS_DEV_CONFIG_NETWORK` is now `GASDEV_NETWORK`.
+- Node.js `^22.15.0` is now required (was `^22.13.0`); see [ADR 0021](docs/adr/0021-node-22-15-floor.md).
 
 ## License
 
