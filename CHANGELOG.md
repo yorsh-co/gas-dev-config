@@ -4,9 +4,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- `gasdev bundle`, `gasdev release`, `gasdev setup` and `gasdev deploy` subcommands, folding in gas-dev-bundle, gas-dev-release and gas-dev-ci; the `gasdev/bundle` and `gasdev/ci` exports; and a reusable `gas-deploy` workflow; see ADRs 0010-0019
+- Legacy `gasDevConfig`, `gasDevBundle`, `gasDevRelease` and `gasDevCi` package.json keys fail with an error naming the replacement and pointing to "Migrating to 3.0"
+
 ### Changed
 
+- **BREAKING:** the package is renamed to `gasdev` and the `gas-dev-config` binary to `gasdev`; see "Migrating to 3.0" in the README
+- **BREAKING:** configuration lives under the `gasdev` package.json key, with `gasdev.bundle`, `gasdev.release` and `gasdev.ci` replacing the separate tool keys
+- `gasdev gas-test run` resolves clasp from `node_modules`
+- `@google/clasp` is a devDependency, with a `gaxios` override
 - The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
+
+### Removed
+
+- The `gas-dev-bundle` dependency
 
 ---
 
