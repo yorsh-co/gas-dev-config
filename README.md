@@ -25,7 +25,7 @@
 
 <a id="gas-dev-tools"></a>
 
-## The gas-dev-\* tools
+## The gasdev tools
 
 Development tools support gas-\* libraries and projects. None of them is ever pushed to Apps Script.
 
@@ -38,13 +38,13 @@ It is a dev dependency installed from GitHub with a `#semver:` range. A library 
 The tools are connected by one piece of metadata, declared once in the library:
 
 ```text
-library package.json            dist/vX.Y.Z package.json          consumer project
-"gasdev": {               "gasLibrary": {                   src/lib/gas-libraries.js
-  "loadOrder": [...],  ──────►    "loadOrder": [...],   ──────►   (libraries and their files
-  "peers": {...}                  "peers": {...}                   in load order)
-}                               }
-validated by                    written by                        written by
-gasdev check            gasdev release            gasdev bundle
+library package.json     dist/vX.Y.Z package.json     consumer project
+"gasdev": {              "gasLibrary": {              src/lib/gas-libraries.js
+  "loadOrder": [...],  ──►  "loadOrder": [...],  ──►    (libraries and their files
+  "peers": {...}            "peers": {...}               in load order)
+}                        }
+validated by             written by                   written by
+gasdev check             gasdev release               gasdev bundle
 ```
 
 `gasdev gas-test build` uses the same bundler as `gasdev bundle` to bundle a library's peers ahead of the library under test.

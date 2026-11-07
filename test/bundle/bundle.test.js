@@ -329,7 +329,7 @@ describe('library metadata', () => {
 
   it('requires gasLibrary and points at gasdev release', () => {
     expect(bundleOne({ version: '1.0.0', gasLibrary: null })).toThrow(
-      /gas-a: package\.json has no gasLibrary\.loadOrder; gas-a needs a release made with gasdev release and gasdev\.loadOrder/,
+      /gas-a: package\.json has no gasLibrary\.loadOrder; gas-a needs a release made with gasdev release \(or gas-dev-release >= 1\.1\.0\) and gasdev\.loadOrder/,
     );
   });
 

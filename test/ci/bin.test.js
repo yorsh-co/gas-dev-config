@@ -1,8 +1,9 @@
 // @ts-check
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const BIN = new URL('../../bin/gasdev.js', import.meta.url).pathname;
+const BIN = fileURLToPath(new URL('../../bin/gasdev.js', import.meta.url));
 
 /**
  * @param {string[]} args
