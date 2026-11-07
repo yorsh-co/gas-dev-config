@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { registerHooks } from 'node:module';
+import * as nodeModule from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -241,7 +241,7 @@ describe('gas-test run', () => {
   });
 
   // `module.registerHooks` (Node 22.15+) is the only hook API that covers `require.resolve`.
-  it.skipIf(typeof registerHooks !== 'function')(
+  it.skipIf(typeof nodeModule.registerHooks !== 'function')(
     'prints the install hint when clasp cannot be resolved',
     () => {
       const dir = createProject();
@@ -258,9 +258,11 @@ describe('gas-test run', () => {
 
   it('does not print the install hint when clasp resolves', () => {
     const dir = createProject();
-    const { env } = fakeEnv();
+    const { env, entries } = fakeEnv();
     const result = run(dir, ['gas-test', 'run'], env);
+    expect(result.status).toBe(1);
     expect(result.stderr).not.toContain(INSTALL_HINT);
+    expect(entries()[0]?.args[0]).toBe('clone');
   });
 
   it('clones, pushes and runs, then prints results and cleans up', () => {
