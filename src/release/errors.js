@@ -37,7 +37,7 @@ export const MISSING_GH =
   'gh is not installed — install GitHub CLI or set githubRelease to false.';
 
 /**
- * Runs a gh read, turning gh failures into release errors.
+ * Runs a gh call, turning gh failures into release errors.
  *
  * @template T
  * @param {() => T} read

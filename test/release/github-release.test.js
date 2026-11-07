@@ -250,7 +250,10 @@ describe('createRelease', () => {
     expect(() =>
       createRelease('acme/gas-lib', 'v1.0.0', 'notes', process.cwd()),
     ).toThrow(
-      expect.objectContaining({ message: 'HTTP 422: Validation Failed' }),
+      expect.objectContaining({
+        name: 'ReleaseError',
+        message: 'HTTP 422: Validation Failed',
+      }),
     );
   });
 
