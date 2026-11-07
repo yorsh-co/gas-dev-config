@@ -21,6 +21,7 @@
 - gh plumbing, ruleset reads, and the `gh release` view/create calls are shared in `src/gh.js` by the release checks and `gasdev github`; `gasdev release` now reports a missing gh with the shared install hint
 - `gasdev setup` and `gasdev deploy` resolve clasp from the project's `node_modules` first, falling back to the one next to gasdev, as `gas-test run` does; see ADR 0020
 - The `gas-dev-*` tools table lists `gas-dev-ci`, which absorbs the `gas-dev-deploy` setup wizard, instead of `gas-dev-deploy`
+- Dev-only: a comment in `bin/check.js` notes that the self-test rewrite depends on the scripts template's `check` wording
 
 ### Fixed
 
