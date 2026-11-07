@@ -13,7 +13,7 @@ import { createRedactor, maskCommands, secretValues } from './secrets.js';
 
 /**
  * @typedef {Omit<import('./cli.js').CliContext, 'stderr' | 'createClasp'> & {
- *   createClasp?: (options: Parameters<typeof defaultCreateClasp>[0]) => Pick<import('./clasp.js').Clasp, 'push' | 'listDeployments' | 'createVersion' | 'updateDeployment' | 'readVersionManifest'>
+ *   createClasp?: (options: Parameters<typeof defaultCreateClasp>[0]) => Pick<import('./clasp.js').Clasp, 'bin' | 'push' | 'listDeployments' | 'createVersion' | 'updateDeployment' | 'readVersionManifest'>
  * }} DeployContext
  */
 
@@ -79,6 +79,7 @@ export async function deploy({
     }
 
     const clasp = createClasp({ cwd, env, redact, auth });
+    stdout.write(`Using clasp: ${clasp.bin}\n`);
     const { deploymentId, sha } = inputs;
 
     if (deploymentId !== undefined) {

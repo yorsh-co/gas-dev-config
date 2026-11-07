@@ -68,6 +68,7 @@ function fakeClasp(options = {}) {
     args[name] = params;
   };
   const clasp = {
+    bin: '/fake/clasp.js',
     push: () => step('push'),
     listDeployments: () => {
       step('list');
@@ -277,7 +278,9 @@ describe('deploy', () => {
     const { context, calls, stdout, output, summary } = setup();
     await deploy(context);
     expect(calls).toEqual(['push']);
-    expect(stdout.text).toBe('Pushed (push only).\n');
+    expect(stdout.text).toBe(
+      'Using clasp: /fake/clasp.js\nPushed (push only).\n',
+    );
     expect(output()).toBe('url=\n');
     expect(summary()).toContain('push only');
   });
@@ -299,7 +302,9 @@ describe('deploy', () => {
     expect(args.deploy).toEqual([DEPLOYMENT, 4, 'abc123']);
     const url = `https://script.google.com/macros/s/${DEPLOYMENT}/exec`;
     expect(calls).toEqual(['list', 'pull', 'push', 'version', 'deploy']);
-    expect(stdout.text).toBe(`Deployed version 4: ${url}\n`);
+    expect(stdout.text).toBe(
+      `Using clasp: /fake/clasp.js\nDeployed version 4: ${url}\n`,
+    );
     expect(output()).toBe(`url=${url}\n`);
     expect(summary()).toContain(url);
     expect(summary()).toContain('4');
