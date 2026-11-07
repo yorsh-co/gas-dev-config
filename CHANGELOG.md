@@ -24,6 +24,7 @@
 ### Fixed
 
 - `gasdev github` reports non-JSON gh output as an error instead of crashing
+- Dev-only: clasp-bin tests build expected `package.json` file URLs portably, so they pass on Windows
 
 ### Removed
 
