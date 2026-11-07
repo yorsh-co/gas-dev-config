@@ -13,6 +13,7 @@
 
 - **BREAKING:** the package is renamed to `gasdev` and the `gas-dev-config` binary to `gasdev`; see "Migrating to 3.0" in the README
 - **BREAKING:** configuration lives under the `gasdev` package.json key, with `gasdev.bundle`, `gasdev.release` and `gasdev.ci` replacing the separate tool keys
+- **BREAKING:** requires Node ^22.15.0, ^24.0.0 or >=26.0.0 (was ^22.13.0, ^24.0.0 or >=26.0.0); see ADR 0021
 - `gasdev gas-test run` resolves clasp from `node_modules`
 - A spawned test covers `gasdev gas-test run`'s install hint when `@google/clasp` cannot be resolved
 - `@google/clasp` is a devDependency, with a `gaxios` override
