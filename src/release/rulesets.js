@@ -119,7 +119,7 @@ export function assertProtected(repo, targets, cwd) {
   if (gaps.length > 0) {
     throw new ReleaseError(
       `Rulesets do not protect the release: ${gaps.join('; ')}.\n` +
-        'Run `npx gas-dev-config github --fix` (needs admin rights) to apply the gas-* rulesets.',
+        'Run `npx gasdev github --fix` (needs admin rights) to apply the gas-* rulesets.',
     );
   }
 }

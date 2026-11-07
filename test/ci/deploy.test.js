@@ -30,7 +30,7 @@ let root;
 let cwd;
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'gas-dev-config-deploy-'));
+  root = mkdtempSync(join(tmpdir(), 'gasdev-deploy-'));
   cwd = join(root, 'project');
   mkdirSync(cwd);
   writeFileSync(join(cwd, '.clasp.example.json'), '{"rootDir":"dist"}');
@@ -145,7 +145,7 @@ describe('deploy', () => {
   it('passes clasp a private credentials file and removes it afterwards', async () => {
     const { context, used } = setup();
     await deploy(context);
-    expect(used.auth).toMatch(/gas-dev-config-auth-[^/]+\/\.clasprc\.json$/);
+    expect(used.auth).toMatch(/gasdev-auth-[^/]+\/\.clasprc\.json$/);
     expect(JSON.parse(used.content ?? '')).toEqual(JSON.parse(CLASPRC));
     expect(existsSync(/** @type {string} */ (used.auth))).toBe(false);
     expect(existsSync(dirname(/** @type {string} */ (used.auth)))).toBe(false);
@@ -195,7 +195,7 @@ describe('deploy', () => {
     await deploy(context);
     const authDir = dirname(/** @type {string} */ (used.auth));
     expect(dirname(authDir)).toBe(runnerTemp);
-    expect(basename(authDir)).toMatch(/^gas-dev-config-auth-/);
+    expect(basename(authDir)).toMatch(/^gasdev-auth-/);
     expect(readdirSync(runnerTemp)).toEqual([]);
   });
 

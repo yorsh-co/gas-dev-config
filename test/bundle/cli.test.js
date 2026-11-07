@@ -14,12 +14,12 @@ import {
 
 afterEach(cleanup);
 
-describe('gas-dev-config bundle CLI', () => {
+describe('gasdev bundle CLI', () => {
   it.each(['--help', '-h'])('%s prints usage and exits 0', (flag) => {
     const result = runBundle(process.cwd(), [flag]);
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain('Usage: gas-dev-config bundle');
-    expect(result.stdout).toContain('gasDevConfig.bundle');
+    expect(result.stdout).toContain('Usage: gasdev bundle');
+    expect(result.stdout).toContain('gasdev.bundle');
   });
 
   it('--version prints the package version', () => {
@@ -35,18 +35,16 @@ describe('gas-dev-config bundle CLI', () => {
   ])('exits 2 with a hint on invalid usage %j', (args, message) => {
     const result = runBundle(process.cwd(), args);
     expect(result.status).toBe(2);
-    expect(result.stderr).toMatch(/^gas-dev-config: /);
+    expect(result.stderr).toMatch(/^gasdev: /);
     expect(result.stderr).toMatch(message);
-    expect(result.stderr).toContain(
-      'Run gas-dev-config bundle --help for usage.',
-    );
+    expect(result.stderr).toContain('Run gasdev bundle --help for usage.');
   });
 
   it('exits 1 with a prefixed message on a known failure', () => {
     const result = runBundle(createProject(createSandbox(), { libraries: {} }));
     expect(result.status).toBe(1);
     expect(result.stderr).toBe(
-      'gas-dev-config: gasDevConfig.bundle.libraries must be a non-empty object.\n',
+      'gasdev: gasdev.bundle.libraries must be a non-empty object.\n',
     );
   });
 
@@ -107,7 +105,7 @@ describe('gas-dev-config bundle CLI', () => {
     });
     const result = runBundle(root);
     expect(result.status).toBe(1);
-    expect(result.stderr).toMatch(/^gas-dev-config: .*syntax error/);
+    expect(result.stderr).toMatch(/^gasdev: .*syntax error/);
     expect(existsSync(join(root, 'src/gas-libraries.js'))).toBe(false);
     expect(existsSync(join(root, 'types'))).toBe(false);
   });

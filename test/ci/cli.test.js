@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DeployError as PublicDeployError } from 'gas-dev-config/ci';
+import { DeployError as PublicDeployError } from 'gasdev/ci';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import pkg from '../../package.json' with { type: 'json' };
 import { createClasp } from '../../src/ci/clasp.js';
@@ -48,7 +48,7 @@ describe('main', () => {
   it.each(['--help', '-h'])('prints usage for %s', async (flag) => {
     const { context, out } = setup();
     expect(await main([flag], context)).toBe(0);
-    expect(out.join('')).toContain('Usage: gas-dev-config');
+    expect(out.join('')).toContain('Usage: gasdev');
   });
 
   it.each([
@@ -59,7 +59,7 @@ describe('main', () => {
   ])('prints usage for %s %s', async (...argv) => {
     const { context, out } = setup();
     expect(await main(argv, context)).toBe(0);
-    expect(out.join('')).toContain('Usage: gas-dev-config setup | deploy');
+    expect(out.join('')).toContain('Usage: gasdev setup | deploy');
   });
 
   it('prints the version', async () => {
@@ -73,7 +73,7 @@ describe('main', () => {
     async (argv) => {
       const { context, err } = setup();
       expect(await main(argv, context)).toBe(2);
-      expect(err.join('')).toContain('Usage: gas-dev-config');
+      expect(err.join('')).toContain('Usage: gasdev');
     },
   );
 
@@ -127,17 +127,17 @@ describe('main setup', () => {
     const { context, err } = setup();
     vi.mocked(runSetup).mockRejectedValueOnce(new DeployError('boom'));
     expect(await main(['setup'], context)).toBe(1);
-    expect(err.join('')).toBe('gas-dev-config: boom\n');
+    expect(err.join('')).toBe('gasdev: boom\n');
   });
 
   it('returns 1 without running clasp when .env is not git-ignored', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'gas-dev-config-cli-'));
+    const cwd = mkdtempSync(join(tmpdir(), 'gasdev-cli-'));
     sandboxes.push(cwd);
     execFileSync('git', ['init', '-q'], { cwd });
     writeFileSync(join(cwd, '.gitignore'), 'node_modules\n');
     writeFileSync(
       join(cwd, 'package.json'),
-      JSON.stringify({ name: 'app', gasDevConfig: { ci: { title: 'App' } } }),
+      JSON.stringify({ name: 'app', gasdev: { ci: { title: 'App' } } }),
     );
     writeFileSync(join(cwd, '.clasp.example.json'), '{"scriptId":""}');
     writeFileSync(join(cwd, 'appsscript.example.json'), '{}');
@@ -155,7 +155,7 @@ describe('main setup', () => {
           }),
       });
       expect(code).toBe(1);
-      expect(err.join('')).toMatch(/^gas-dev-config: \.env is not ignored/);
+      expect(err.join('')).toMatch(/^gasdev: \.env is not ignored/);
       expect(readCalls(fake.logPath)).toEqual([]);
     } finally {
       fake.cleanup();
@@ -163,13 +163,13 @@ describe('main setup', () => {
   });
 
   it('returns 1 instead of throwing when stdout and stderr are plain writers', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'gas-dev-config-cli-'));
+    const cwd = mkdtempSync(join(tmpdir(), 'gasdev-cli-'));
     sandboxes.push(cwd);
     execFileSync('git', ['init', '-q'], { cwd });
     writeFileSync(join(cwd, '.gitignore'), 'node_modules\n.env\n');
     writeFileSync(
       join(cwd, 'package.json'),
-      JSON.stringify({ name: 'app', gasDevConfig: { ci: { title: 'App' } } }),
+      JSON.stringify({ name: 'app', gasdev: { ci: { title: 'App' } } }),
     );
     writeFileSync(join(cwd, '.clasp.example.json'), '{"scriptId":""}');
     writeFileSync(join(cwd, 'appsscript.example.json'), '{}');
@@ -187,7 +187,7 @@ describe('main setup', () => {
           }),
       });
       expect(code).toBe(1);
-      expect(err.join('')).toMatch(/^gas-dev-config: /);
+      expect(err.join('')).toMatch(/^gasdev: /);
     } finally {
       fake.cleanup();
     }

@@ -11,7 +11,7 @@ const OPTIONS = /** @type {const} */ ({
   version: { type: 'boolean' },
 });
 
-const USAGE = `Usage: gas-dev-config release [--dry-run] [--target <branch>]...
+const USAGE = `Usage: gasdev release [--dry-run] [--target <branch>]...
 
 Publishes the build of a gas-* library to its dist branch(es) with tags.
 
@@ -45,7 +45,7 @@ export async function main(argv) {
     // Node appends advice about `--` that does not apply to this CLI.
     const summary = message.split('. ')[0]?.replace(/\.$/, '');
     process.stderr.write(
-      `gas-dev-config: ${summary}.\nRun gas-dev-config release --help for usage.\n`,
+      `gasdev: ${summary}.\nRun gasdev release --help for usage.\n`,
     );
     return 2;
   }
@@ -65,7 +65,7 @@ export async function main(argv) {
     return 0;
   } catch (error) {
     if (error instanceof ReleaseError) {
-      process.stderr.write(`gas-dev-config: ${error.message}\n`);
+      process.stderr.write(`gasdev: ${error.message}\n`);
       return error instanceof GitHubReleaseError ? error.exitCode : 1;
     }
     throw error;

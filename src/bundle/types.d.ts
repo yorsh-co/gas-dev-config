@@ -11,11 +11,11 @@ export interface ResolvedLibrary {
 }
 
 export interface BundleOptions {
-  /** Same shape as `gasDevConfig.bundle.libraries`; may be empty when only `extraFiles` are bundled. */
+  /** Same shape as `gasdev.bundle.libraries`; may be empty when only `extraFiles` are bundled. */
   libraries: Record<string, LibrarySpec>;
   /** Project root; default `process.cwd()`. */
   cwd?: string;
-  /** Default `<cwd>/node_modules/.cache/gas-dev-config/bundle`. */
+  /** Default `<cwd>/node_modules/.cache/gasdev/bundle`. */
   cacheDir?: string;
   /** Absolute `.js` paths appended after the libraries, in order. */
   extraFiles?: string[];
@@ -41,7 +41,7 @@ export interface BundleConfig {
 /** Resolves, fetches and concatenates gas-* libraries. Writes nothing outside the cache. */
 export function bundle(options: BundleOptions): BundleResult;
 
-/** Reads and validates `gasDevConfig.bundle` from `<cwd>/package.json`. */
+/** Reads and validates `gasdev.bundle` from `<cwd>/package.json`. */
 export function loadConfig(cwd: string): BundleConfig;
 
 /** An expected failure; its message is shown to the user without a stack trace. */

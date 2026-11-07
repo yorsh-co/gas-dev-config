@@ -15,9 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const FAKE_GH = fileURLToPath(new URL('./fake-gh.js', import.meta.url));
 
-const BIN = fileURLToPath(
-  new URL('../../../bin/gas-dev-config.js', import.meta.url),
-);
+const BIN = fileURLToPath(new URL('../../../bin/gasdev.js', import.meta.url));
 
 /** @type {string[]} */
 const sandboxes = [];
@@ -63,8 +61,8 @@ function configureUser(root, name = 'Test') {
  * Creates a project repo with a bare `origin`, a built `dist/` and the `v1.0.0` tag.
  *
  * @param {object} [options]
- * @param {Record<string, unknown>} [options.config] The `gasDevConfig.release` package.json value.
- * @param {Record<string, unknown>} [options.pkg] Extra package.json fields, e.g. `gasDevConfig`.
+ * @param {Record<string, unknown>} [options.config] The `gasdev.release` package.json value.
+ * @param {Record<string, unknown>} [options.pkg] Extra package.json fields, e.g. `gasdev`.
  * @param {string} [options.gitignore] Content of `.gitignore`.
  * @param {Record<string, string>} [options.files] Extra tracked files (path -> content).
  * @param {(root: string) => void} [options.build] Writes the initial build output.
@@ -77,7 +75,7 @@ export function createProject({
   files = {},
   build = (dir) => writeBuild(dir, 'one'),
 } = {}) {
-  const sandbox = mkdtempSync(join(tmpdir(), 'gas-dev-config-release-'));
+  const sandbox = mkdtempSync(join(tmpdir(), 'gasdev-release-'));
   sandboxes.push(sandbox);
   const origin = join(sandbox, 'origin.git');
   const root = join(sandbox, 'project');
@@ -104,12 +102,12 @@ export function createProject({
         scripts: { build: 'tsc' },
         devDependencies: { typescript: '^5.0.0' },
         ...pkg,
-        ...(config !== undefined || pkg['gasDevConfig'] !== undefined
+        ...(config !== undefined || pkg['gasdev'] !== undefined
           ? {
-              gasDevConfig: {
+              gasdev: {
                 ...(config && { release: config }),
                 .../** @type {Record<string, unknown> | undefined} */ (
-                  pkg['gasDevConfig']
+                  pkg['gasdev']
                 ),
               },
             }
@@ -238,7 +236,7 @@ export function fakeGh({
   create = 'ok',
   rules = 'protected',
 } = {}) {
-  const sandbox = mkdtempSync(join(tmpdir(), 'gas-dev-config-release-gh-'));
+  const sandbox = mkdtempSync(join(tmpdir(), 'gasdev-release-gh-'));
   sandboxes.push(sandbox);
   const bin = join(sandbox, 'bin');
   const log = join(sandbox, 'calls.jsonl');

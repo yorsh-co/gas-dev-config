@@ -79,7 +79,7 @@ describe('--target', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      'gas-dev-config: Unknown target "nope" — configured branches: dist, dist-web.',
+      'gasdev: Unknown target "nope" — configured branches: dist, dist-web.',
     );
     expect(refs(origin)).toBe(before);
   });

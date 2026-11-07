@@ -59,7 +59,7 @@ const tree = (repo, ref) =>
  */
 function expectRefusal(result, message) {
   expect(result.status).toBe(1);
-  expect(result.stderr).toMatch(/^gas-dev-config: /);
+  expect(result.stderr).toMatch(/^gasdev: /);
   expect(result.stderr).toMatch(message);
   expect(result.stderr).not.toContain('    at ');
 }

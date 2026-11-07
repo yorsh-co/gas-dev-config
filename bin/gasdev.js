@@ -27,17 +27,17 @@ const OPTIONS = /** @type {const} */ ({
   fix: { type: 'boolean' },
 });
 
-const USAGE = `Usage: gas-dev-config check [--fix]
-       gas-dev-config init
-       gas-dev-config github [--fix]
-       gas-dev-config gas-test build [--out <file>]
-       gas-dev-config gas-test run [--keep]
-       gas-dev-config html [--check]
-       gas-dev-config bundle
-       gas-dev-config release [--dry-run] [--target <branch>]...
-       gas-dev-config setup
-       gas-dev-config deploy
-       gas-dev-config peers sync [--check]
+const USAGE = `Usage: gasdev check [--fix]
+       gasdev init
+       gasdev github [--fix]
+       gasdev gas-test build [--out <file>]
+       gasdev gas-test run [--keep]
+       gasdev html [--check]
+       gasdev bundle
+       gasdev release [--dry-run] [--target <branch>]...
+       gasdev setup
+       gasdev deploy
+       gasdev peers sync [--check]
 
 Reports drift of .gitignore, .prettierignore, .github/dependabot.yml and the
 standard package.json scripts from the preset templates. Writes only with --fix.
@@ -45,7 +45,7 @@ init scaffolds a new project: it creates or completes those ignore files, create
 .github/dependabot.yml when absent and adds the missing required scripts. It never
 overwrites an existing file or script, then prints the check report.
 
-The preset is read from package.json: "gasDevConfig": { "preset": "gas" | "node" }
+The preset is read from package.json: "gasdev": { "preset": "gas" | "node" }
 (default: gas). "loadOrder", "peers", "gasTest" and "html" are also validated.
 
 Commands:
@@ -63,11 +63,11 @@ Commands:
                    (TypeScript is transpiled) into a generated .ts file that
                    declares the page as a string constant
   bundle           Bundle gas-* libraries from their dist tags into one global
-                   script file (see "gasDevConfig.bundle"; run bundle --help)
+                   script file (see "gasdev.bundle"; run bundle --help)
   release          Publish the build of a gas-* library to its dist branch(es)
-                   with tags (see "gasDevConfig.release"; run release --help)
+                   with tags (see "gasdev.release"; run release --help)
   setup            Guided setup of a Google Apps Script web app deployment
-                   (see "gasDevConfig.ci"; run setup --help)
+                   (see "gasdev.ci"; run setup --help)
   deploy           Push with clasp and redeploy the web app, as the reusable
                    workflow does (run deploy --help)
   peers sync       Write src/internal/<peer>.peer.types.d.ts for each
@@ -79,7 +79,7 @@ Options:
   -h, --help       Show this help
   --version        Show the version
   --out <file>     gas-test build: output file
-                   (default: node_modules/.cache/gas-dev-config/gas-test.js)
+                   (default: node_modules/.cache/gasdev/gas-test.js)
   --keep           gas-test run: keep the temporary project directory
   --check          html, peers sync: write nothing; exit 1 when a generated
                    file is stale
@@ -93,9 +93,7 @@ Options:
  * @returns {number} Exit code 2.
  */
 function usageError(message) {
-  process.stderr.write(
-    `gas-dev-config: ${message}\nRun gas-dev-config --help for usage.\n`,
-  );
+  process.stderr.write(`gasdev: ${message}\nRun gasdev --help for usage.\n`);
   return 2;
 }
 
@@ -200,7 +198,7 @@ export async function main(argv) {
       error instanceof HtmlError ||
       error instanceof PeersError
     ) {
-      process.stderr.write(`gas-dev-config: ${error.message}\n`);
+      process.stderr.write(`gasdev: ${error.message}\n`);
       return 1;
     }
     throw error;

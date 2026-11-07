@@ -31,7 +31,7 @@ describe('loadConfig', () => {
 
   it('overrides the title', () => {
     const root = createProject({
-      pkg: { gasDevConfig: { ci: { title: 'Custom' } } },
+      pkg: { gasdev: { ci: { title: 'Custom' } } },
     });
     expect(loadConfig(root).title).toBe('Custom');
   });
@@ -44,24 +44,24 @@ describe('loadConfig', () => {
   });
 
   it('rejects an unknown key', () => {
-    const root = createProject({ pkg: { gasDevConfig: { ci: { nope: 1 } } } });
-    expect(() => loadConfig(root)).toThrow('gasDevConfig.ci.nope');
+    const root = createProject({ pkg: { gasdev: { ci: { nope: 1 } } } });
+    expect(() => loadConfig(root)).toThrow('gasdev.ci.nope');
   });
 
   it.each([
-    ['ci', 'text', 'gasDevConfig.ci must be an object'],
-    ['ci', [], 'gasDevConfig.ci must be an object'],
-    ['title', 5, 'gasDevConfig.ci.title must be a non-empty string'],
-    ['title', '  ', 'gasDevConfig.ci.title must be a non-empty string'],
+    ['ci', 'text', 'gasdev.ci must be an object'],
+    ['ci', [], 'gasdev.ci must be an object'],
+    ['title', 5, 'gasdev.ci.title must be a non-empty string'],
+    ['title', '  ', 'gasdev.ci.title must be a non-empty string'],
   ])('rejects wrong type for %s (%j)', (key, value, message) => {
     const ci = key === 'title' ? { title: value } : value;
-    const root = createProject({ pkg: { gasDevConfig: { ci } } });
+    const root = createProject({ pkg: { gasdev: { ci } } });
     expect(() => loadConfig(root)).toThrow(message);
   });
 
   it('resolves the steps module to an absolute path', () => {
     const root = createProject({
-      pkg: { gasDevConfig: { ci: { steps: 'deploy/steps.mjs' } } },
+      pkg: { gasdev: { ci: { steps: 'deploy/steps.mjs' } } },
       files: { 'deploy/steps.mjs': 'export default [];\n' },
     });
     expect(loadConfig(root).stepsPath).toBe(join(root, 'deploy/steps.mjs'));
@@ -75,7 +75,7 @@ describe('loadConfig', () => {
     ['steps.ts', 'must end in .js or .mjs'],
     ['missing.js', 'not found'],
   ])('rejects invalid steps %j', (steps, message) => {
-    const root = createProject({ pkg: { gasDevConfig: { ci: { steps } } } });
+    const root = createProject({ pkg: { gasdev: { ci: { steps } } } });
     expect(() => loadConfig(root)).toThrow(message);
   });
 

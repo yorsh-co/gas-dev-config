@@ -14,7 +14,7 @@ import { BundleError } from './errors.js';
 import { git } from './git.js';
 
 /** Metadata written next to the fetched files; its presence marks a complete cache entry. */
-export const METADATA_FILE = '.gas-dev-config-bundle.json';
+export const METADATA_FILE = '.gasdev-bundle.json';
 
 /**
  * Lists the versions of a repository's `dist/vX.Y.Z` tags, ignoring unparseable ones.

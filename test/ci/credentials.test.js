@@ -15,7 +15,7 @@ import { writeCredentials } from '../../src/ci/credentials.js';
 /** @type {string} */
 let dir;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-dir-'));
+  dir = mkdtempSync(join(tmpdir(), 'gasdev-dir-'));
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 

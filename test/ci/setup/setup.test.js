@@ -119,7 +119,7 @@ describe('setup', () => {
         '',
       ].join('\n'),
     );
-    expect(stdout).toContain(`gas-dev-config ${version}`);
+    expect(stdout).toContain(`gasdev ${version}`);
     expect(stdout).toContain('Script ID:     script-9');
     expect(stdout).toContain(
       'Web app URL:   https://script.google.com/macros/s/AKfy-2/exec',

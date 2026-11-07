@@ -150,7 +150,7 @@ export function createClasp({ cwd, env, redact = (text) => text, bin, auth }) {
       run(['login'], { inherit: true });
     },
     create(title) {
-      const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-create-'));
+      const dir = mkdtempSync(join(tmpdir(), 'gasdev-create-'));
       try {
         const data = /** @type {{ scriptId?: string }} */ (
           runJson(
@@ -198,7 +198,7 @@ export function createClasp({ cwd, env, redact = (text) => text, bin, auth }) {
       }
     },
     readVersionManifest(scriptId, version) {
-      const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-pull-'));
+      const dir = mkdtempSync(join(tmpdir(), 'gasdev-pull-'));
       try {
         writeFileSync(
           join(dir, '.clasp.json'),

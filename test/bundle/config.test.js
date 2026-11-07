@@ -44,30 +44,27 @@ describe('loadConfig', () => {
   });
 
   it.each([
-    [undefined, /no "gasDevConfig.bundle" object/],
-    [{}, /gasDevConfig\.bundle\.libraries must be a non-empty object/],
-    [
-      { libraries: {} },
-      /gasDevConfig\.bundle\.libraries must be a non-empty object/,
-    ],
+    [undefined, /no "gasdev.bundle" object/],
+    [{}, /gasdev\.bundle\.libraries must be a non-empty object/],
+    [{ libraries: {} }, /gasdev\.bundle\.libraries must be a non-empty object/],
     [{ libraries: ['gas-a'] }, /must be a non-empty object/],
     [
       { libraries: { 'gas-a': '*' }, outfile: 'x.js' },
-      /gasDevConfig\.bundle\.outfile is not a known option/,
+      /gasdev\.bundle\.outfile is not a known option/,
     ],
     [
       { libraries: { 'gas-a': { version: '1', repositry: 'x' } } },
-      /gasDevConfig\.bundle\.libraries\.gas-a\.repositry is not a known option/,
+      /gasdev\.bundle\.libraries\.gas-a\.repositry is not a known option/,
     ],
     [{ libraries: { 'Gas-A': '1' } }, /"Gas-A" is not a valid library name/],
     [{ libraries: { '-a': '1' } }, /"-a" is not a valid library name/],
     [
       { libraries: { 'gas-a': 'nope' } },
-      /gasDevConfig\.bundle\.libraries\.gas-a must be a valid semver range/,
+      /gasdev\.bundle\.libraries\.gas-a must be a valid semver range/,
     ],
     [
       { libraries: { 'gas-a': { version: 3 } } },
-      /gasDevConfig\.bundle\.libraries\.gas-a\.version must be a valid semver range/,
+      /gasdev\.bundle\.libraries\.gas-a\.version must be a valid semver range/,
     ],
     [
       { libraries: { 'gas-a': { version: '1', repository: '' } } },
@@ -75,7 +72,7 @@ describe('loadConfig', () => {
     ],
     [
       { libraries: { 'gas-a': '1' }, outFile: '/abs/x.js' },
-      /gasDevConfig\.bundle\.outFile must be a relative path/,
+      /gasdev\.bundle\.outFile must be a relative path/,
     ],
     [
       { libraries: { 'gas-a': '1' }, outFile: '../x.js' },

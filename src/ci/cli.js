@@ -5,7 +5,7 @@ import { CancelledError, isDeployError } from './errors.js';
 import { createIo } from './setup/io.js';
 import { setup } from './setup/setup.js';
 
-const USAGE = `Usage: gas-dev-config setup | deploy
+const USAGE = `Usage: gasdev setup | deploy
 
 Commands:
   setup       Guided first-time setup and web app deployment
@@ -75,7 +75,7 @@ export async function main(argv, context) {
         return 130;
       }
       if (isDeployError(error)) {
-        stderr.write(`gas-dev-config: ${error.message}\n`);
+        stderr.write(`gasdev: ${error.message}\n`);
         return 1;
       }
       throw error;

@@ -58,7 +58,7 @@ jobs:
         env:
           GAS_BUILD: ${{ inputs.build }}
       - id: deploy
-        run: npx --no-install gas-dev-config deploy
+        run: npx --no-install gasdev deploy
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           GAS_SCRIPT_ID: ${{ vars.GAS_SCRIPT_ID }}

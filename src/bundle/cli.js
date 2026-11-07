@@ -12,11 +12,11 @@ const OPTIONS = /** @type {const} */ ({
   version: { type: 'boolean' },
 });
 
-const USAGE = `Usage: gas-dev-config bundle
+const USAGE = `Usage: gasdev bundle
 
 Bundles gas-* Google Apps Script libraries from their dist tags into one global script file.
 
-Reads "gasDevConfig.bundle" from the package.json in the current directory:
+Reads "gasdev.bundle" from the package.json in the current directory:
   libraries   Required. Library name -> semver range or { version, repository }
   outFile     Bundle path (default: src/gas-libraries.js)
   typesFile   Optional declarations path (must end in .d.ts)
@@ -59,7 +59,7 @@ export function main(argv) {
     // Node appends advice about `--` that does not apply to this CLI.
     const summary = message.split('. ')[0]?.replace(/\.$/, '');
     process.stderr.write(
-      `gas-dev-config: ${summary}.\nRun gas-dev-config bundle --help for usage.\n`,
+      `gasdev: ${summary}.\nRun gasdev bundle --help for usage.\n`,
     );
     return 2;
   }
@@ -93,7 +93,7 @@ export function main(argv) {
     return 0;
   } catch (error) {
     if (error instanceof BundleError) {
-      process.stderr.write(`gas-dev-config: ${error.message}\n`);
+      process.stderr.write(`gasdev: ${error.message}\n`);
       return 1;
     }
     throw error;

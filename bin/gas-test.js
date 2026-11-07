@@ -18,12 +18,7 @@ import ts from 'typescript';
 import { loadConfig } from './check.js';
 
 /** Default location of the built script, relative to the project root. */
-const DEFAULT_OUT = join(
-  'node_modules',
-  '.cache',
-  'gas-dev-config',
-  'gas-test.js',
-);
+const DEFAULT_OUT = join('node_modules', '.cache', 'gasdev', 'gas-test.js');
 
 const RUNTIME = fileURLToPath(
   new URL('../gas-test/runtime.js', import.meta.url),
@@ -132,11 +127,11 @@ function testFiles(cwd) {
 export function buildGasTest(cwd, { loadOrder, peers }) {
   if (!loadOrder) {
     throw new GasTestError(
-      'package.json: "gasDevConfig.loadOrder" is required by gas-test',
+      'package.json: "gasdev.loadOrder" is required by gas-test',
     );
   }
   const tests = testFiles(cwd);
-  const tmp = mkdtempSync(join(tmpdir(), 'gas-dev-config-build-'));
+  const tmp = mkdtempSync(join(tmpdir(), 'gasdev-build-'));
   try {
     const library = transpileAll(
       loadOrder.map((file) => join(cwd, 'src', file)),
@@ -149,7 +144,7 @@ export function buildGasTest(cwd, { loadOrder, peers }) {
       extraFiles: [...library, RUNTIME, ...compiled],
     });
     const stamp = `${new Date().toISOString()} ${randomBytes(8).toString('hex')}`;
-    return `// gas-dev-config gas-test build ${stamp}\n${code}`;
+    return `// gasdev gas-test build ${stamp}\n${code}`;
   } catch (error) {
     if (error instanceof BundleError) {
       throw new GasTestError(error.message, { cause: error });
@@ -164,7 +159,7 @@ export function buildGasTest(cwd, { loadOrder, peers }) {
  * `gas-test build`: writes the script and prints its path.
  *
  * @param {string} cwd Project root.
- * @param {{ out?: string | undefined }} options `out` defaults to `node_modules/.cache/gas-dev-config/gas-test.js`.
+ * @param {{ out?: string | undefined }} options `out` defaults to `node_modules/.cache/gasdev/gas-test.js`.
  * @returns {number} The exit code.
  * @throws {GasTestError} On an unusable project.
  */
@@ -334,21 +329,21 @@ export function runRun(cwd, { keep = false }) {
   const config = loadConfig(cwd);
   if (!config.gasTest) {
     throw new GasTestError(
-      'package.json: "gasDevConfig.gasTest" is required by gas-test run',
+      'package.json: "gasdev.gasTest" is required by gas-test run',
     );
   }
   const { scopes } = config.gasTest;
   const scriptId = process.env['GAS_TEST_SCRIPT_ID'] || config.gasTest.scriptId;
   if (!scriptId) {
     throw new GasTestError(
-      'no script ID: set GAS_TEST_SCRIPT_ID or "gasDevConfig.gasTest.scriptId"',
+      'no script ID: set GAS_TEST_SCRIPT_ID or "gasdev.gasTest.scriptId"',
     );
   }
   const spreadsheetId = process.env['GAS_TEST_SPREADSHEET_ID'] || undefined;
   const code = buildGasTest(cwd, config);
   const bin = claspBin(cwd);
 
-  const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-run-'));
+  const dir = mkdtempSync(join(tmpdir(), 'gasdev-run-'));
   try {
     prepareProject(bin, dir, scriptId, scopes, code);
     claspStep(bin, ['push', '--force'], dir);
@@ -365,9 +360,7 @@ export function runRun(cwd, { keep = false }) {
     if (!decoded) {
       const text = output(run);
       process.stderr.write(`${text}\n`);
-      process.stderr.write(
-        'gas-dev-config: clasp run returned no test results.\n',
-      );
+      process.stderr.write('gasdev: clasp run returned no test results.\n');
       if (SCOPE_PROBLEM.test(text)) {
         process.stderr.write(
           `The OAuth scopes may be missing. Run: npx clasp login --extra-scopes ${scopes.join(',')}\n`,

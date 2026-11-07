@@ -7,18 +7,18 @@ const pkg = JSON.parse(
 );
 
 describe('package', () => {
-  it('is the gas-dev-config ESM package', () => {
-    expect(pkg.name).toBe('gas-dev-config');
+  it('is the gasdev ESM package', () => {
+    expect(pkg.name).toBe('gasdev');
     expect(pkg.type).toBe('module');
   });
 
   it('exports exactly the documented ci API', async () => {
-    const entry = await import('gas-dev-config/ci');
+    const entry = await import('gasdev/ci');
     expect(Object.keys(entry).sort()).toEqual(['DeployError']);
   });
 
   it('exports exactly the documented bundle API', async () => {
-    const entry = await import('gas-dev-config/bundle');
+    const entry = await import('gasdev/bundle');
     expect(Object.keys(entry).sort()).toEqual([
       'BundleError',
       'bundle',

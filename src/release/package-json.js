@@ -48,7 +48,7 @@ export function releasePackageJson(pkg, gasLibrary) {
  * parent directory) are dropped, mirroring the release copy.
  *
  * @param {Target} target
- * @param {string[]} loadOrder `gasDevConfig.loadOrder`, relative to `src/`.
+ * @param {string[]} loadOrder `gasdev.loadOrder`, relative to `src/`.
  * @param {string} cwd Project root.
  * @returns {string[]} Shipped `.js` paths relative to the branch root, in load order.
  * @throws {ReleaseError} When a built file is missing or nothing remains to load.
@@ -59,7 +59,7 @@ export function shippedLoadOrder(target, loadOrder, cwd) {
     const js = entry.replace(/\.ts$/, '.js');
     if (!existsSync(join(cwd, target.from, js))) {
       throw new ReleaseError(
-        `[${target.branch}] gasDevConfig.loadOrder: ${target.from}/${js} is missing — run the build first.`,
+        `[${target.branch}] gasdev.loadOrder: ${target.from}/${js} is missing — run the build first.`,
       );
     }
     const segments = js.split('/');
@@ -78,7 +78,7 @@ export function shippedLoadOrder(target, loadOrder, cwd) {
   }
   if (shipped.length === 0) {
     throw new ReleaseError(
-      `[${target.branch}] gasDevConfig.loadOrder: no entry is shipped — every file is hidden or excluded.`,
+      `[${target.branch}] gasdev.loadOrder: no entry is shipped — every file is hidden or excluded.`,
     );
   }
   return shipped;

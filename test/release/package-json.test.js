@@ -24,7 +24,7 @@ afterEach(() => {
  * @returns {string}
  */
 function buildDir(files) {
-  const cwd = mkdtempSync(join(tmpdir(), 'gas-dev-config-release-unit-'));
+  const cwd = mkdtempSync(join(tmpdir(), 'gasdev-release-unit-'));
   dirs.push(cwd);
   writeFiles(
     cwd,
@@ -129,7 +129,7 @@ describe('shippedLoadOrder', () => {
 
     expect(() => shippedLoadOrder(target(), ['a.ts', 'x.ts'], cwd)).toThrow(
       new ReleaseError(
-        '[dist] gasDevConfig.loadOrder: dist/x.js is missing — run the build first.',
+        '[dist] gasdev.loadOrder: dist/x.js is missing — run the build first.',
       ),
     );
   });
@@ -138,7 +138,7 @@ describe('shippedLoadOrder', () => {
     const cwd = buildDir(['a.types.js']);
 
     expect(() => shippedLoadOrder(target(), ['a.types.ts'], cwd)).toThrow(
-      /\[dist\] gasDevConfig\.loadOrder: no entry is shipped/,
+      /\[dist\] gasdev\.loadOrder: no entry is shipped/,
     );
   });
 });

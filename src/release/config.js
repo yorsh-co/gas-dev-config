@@ -34,8 +34,8 @@ import { ReleaseError } from './errors.js';
  * @property {Record<string, unknown>} pkg The project's package.json.
  * @property {Target[]} targets Resolved release targets.
  * @property {boolean} githubRelease Whether to create a GitHub Release for `vX.Y.Z` after the push.
- * @property {string[]} [loadOrder] `gasDevConfig.loadOrder`: `.ts` paths relative to `src/`, in load order.
- * @property {Record<string, string>} [peers] `gasDevConfig.peers`: optional libraries and their version ranges.
+ * @property {string[]} [loadOrder] `gasdev.loadOrder`: `.ts` paths relative to `src/`, in load order.
+ * @property {Record<string, string>} [peers] `gasdev.peers`: optional libraries and their version ranges.
  */
 
 const DEFAULT_FILES = ['README.md', 'LICENSE.md', 'CHANGELOG.md'];
@@ -152,7 +152,7 @@ function resolveFile(entry, key) {
  * @throws {ReleaseError}
  */
 function resolveTarget(value, index) {
-  const key = `gasDevConfig.release.targets[${index}]`;
+  const key = `gasdev.release.targets[${index}]`;
   if (!isObject(value)) {
     throw new ReleaseError(`${key} must be an object.`);
   }
@@ -191,23 +191,21 @@ function resolveTarget(value, index) {
 /**
  * Resolves the configured targets, or the single default target.
  *
- * @param {unknown} targets The `gasDevConfig.release.targets` value.
+ * @param {unknown} targets The `gasdev.release.targets` value.
  * @returns {Target[]}
  * @throws {ReleaseError} When a target is invalid or two targets share a branch.
  */
 function resolveTargets(targets) {
   if (targets === undefined) return [resolveTarget({ branch: 'dist' }, 0)];
   if (!Array.isArray(targets) || targets.length === 0) {
-    throw new ReleaseError(
-      'gasDevConfig.release.targets must be a non-empty array.',
-    );
+    throw new ReleaseError('gasdev.release.targets must be a non-empty array.');
   }
   const resolved = targets.map(resolveTarget);
   const seen = new Set();
   for (const { branch } of resolved) {
     if (seen.has(branch)) {
       throw new ReleaseError(
-        `gasDevConfig.release.targets has more than one target for branch "${branch}".`,
+        `gasdev.release.targets has more than one target for branch "${branch}".`,
       );
     }
     seen.add(branch);
@@ -216,10 +214,10 @@ function resolveTargets(targets) {
 }
 
 /**
- * Resolves the library metadata from `gasDevConfig`. Shape checks only; `gas-dev-config check`
+ * Resolves the library metadata from `gasdev`. Shape checks only; `gasdev check`
  * validates the paths and versions.
  *
- * @param {unknown} value The `gasDevConfig` value.
+ * @param {unknown} value The `gasdev` value.
  * @returns {{ loadOrder?: string[], peers?: Record<string, string> }}
  * @throws {ReleaseError} When `loadOrder` or `peers` has the wrong shape.
  */
@@ -235,7 +233,7 @@ function resolveLibraryMetadata(value) {
       ))
   ) {
     throw new ReleaseError(
-      'gasDevConfig.loadOrder must be a non-empty array of .ts paths.',
+      'gasdev.loadOrder must be a non-empty array of .ts paths.',
     );
   }
   if (
@@ -243,9 +241,7 @@ function resolveLibraryMetadata(value) {
     (!isObject(peers) ||
       Object.values(peers).some((range) => typeof range !== 'string'))
   ) {
-    throw new ReleaseError(
-      'gasDevConfig.peers must be an object of version ranges.',
-    );
+    throw new ReleaseError('gasdev.peers must be an object of version ranges.');
   }
   return {
     ...(loadOrder && { loadOrder }),
@@ -262,7 +258,7 @@ function resolveLibraryMetadata(value) {
  * @throws {ReleaseError} When package.json is missing or has no version, or the config is invalid.
  */
 export function loadConfig(cwd) {
-  /** @type {Record<string, unknown> & { version?: unknown, gasDevConfig?: unknown }} */
+  /** @type {Record<string, unknown> & { version?: unknown, gasdev?: unknown }} */
   let pkg;
   try {
     pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'));
@@ -274,33 +270,30 @@ export function loadConfig(cwd) {
   if (typeof pkg.version !== 'string' || pkg.version === '') {
     throw new ReleaseError('package.json has no "version".');
   }
-  const options =
-    (isObject(pkg.gasDevConfig) ? pkg.gasDevConfig.release : undefined) ?? {};
+  const options = (isObject(pkg.gasdev) ? pkg.gasdev.release : undefined) ?? {};
   if (!isObject(options)) {
-    throw new ReleaseError('gasDevConfig.release must be an object.');
+    throw new ReleaseError('gasdev.release must be an object.');
   }
   rejectUnknownKeys(
     options,
     ['remote', 'targets', 'githubRelease'],
-    'gasDevConfig.release',
+    'gasdev.release',
   );
   if (
     options.githubRelease !== undefined &&
     typeof options.githubRelease !== 'boolean'
   ) {
-    throw new ReleaseError(
-      'gasDevConfig.release.githubRelease must be a boolean.',
-    );
+    throw new ReleaseError('gasdev.release.githubRelease must be a boolean.');
   }
   return {
     remote:
       options.remote === undefined
         ? 'origin'
-        : requiredString(options.remote, 'gasDevConfig.release.remote'),
+        : requiredString(options.remote, 'gasdev.release.remote'),
     version: pkg.version,
     pkg,
     targets: resolveTargets(options.targets),
     githubRelease: options.githubRelease ?? false,
-    ...resolveLibraryMetadata(pkg.gasDevConfig),
+    ...resolveLibraryMetadata(pkg.gasdev),
   };
 }

@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from './support.js';
 
-const BIN = join(REPO_ROOT, 'bin', 'gas-dev-config.js');
+const BIN = join(REPO_ROOT, 'bin', 'gasdev.js');
 const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/script.storage',
@@ -58,16 +58,16 @@ afterEach(() => {
 
 /** @returns {string} */
 function tempDir() {
-  const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-cli-'));
+  const dir = mkdtempSync(join(tmpdir(), 'gasdev-cli-'));
   dirs.push(dir);
   return dir;
 }
 
 /**
- * @param {Record<string, unknown>} [gasDevConfig]
+ * @param {Record<string, unknown>} [gasdev]
  * @returns {string} A project with a library file and a test.
  */
-function createProject(gasDevConfig = {}) {
+function createProject(gasdev = {}) {
   const dir = tempDir();
   mkdirSync(join(dir, 'src'));
   mkdirSync(join(dir, 'gas-test'));
@@ -84,10 +84,10 @@ function createProject(gasDevConfig = {}) {
     join(dir, 'package.json'),
     JSON.stringify({
       name: 'consumer',
-      gasDevConfig: {
+      gasdev: {
         loadOrder: ['lib.ts'],
         gasTest: { scopes: SCOPES, scriptId: 'config-script' },
-        ...gasDevConfig,
+        ...gasdev,
       },
     }),
   );
@@ -147,13 +147,7 @@ describe('gas-test build', () => {
   it('writes the default cache file with real bundling and no peers', () => {
     const dir = createProject();
     const result = run(dir, ['gas-test', 'build']);
-    const out = join(
-      dir,
-      'node_modules',
-      '.cache',
-      'gas-dev-config',
-      'gas-test.js',
-    );
+    const out = join(dir, 'node_modules', '.cache', 'gasdev', 'gas-test.js');
     expect(result.status).toBe(0);
     expect(result.stdout).toContain(out);
     expect(result.stdout).toContain(
@@ -161,7 +155,7 @@ describe('gas-test build', () => {
     );
     const code = readFileSync(out, 'utf8');
     expect(code.split('\n')[0]).toMatch(
-      /^\/\/ gas-dev-config gas-test build \S+ [0-9a-f]{16}$/,
+      /^\/\/ gasdev gas-test build \S+ [0-9a-f]{16}$/,
     );
     const order = [
       '// ---- lib.js ----',
@@ -184,11 +178,11 @@ describe('gas-test build', () => {
   it('fails without loadOrder', () => {
     const dir = createProject();
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-    pkg.gasDevConfig = {};
+    pkg.gasdev = {};
     writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg));
     const result = run(dir, ['gas-test', 'build']);
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('"gasDevConfig.loadOrder" is required');
+    expect(result.stderr).toContain('"gasdev.loadOrder" is required');
   });
 
   it('fails without tests', () => {
@@ -236,7 +230,7 @@ describe('gas-test run', () => {
     const dir = createProject({ gasTest: undefined });
     const result = run(dir, ['gas-test', 'run'], fakeEnv().env);
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('"gasDevConfig.gasTest" is required');
+    expect(result.stderr).toContain('"gasdev.gasTest" is required');
   });
 
   it('clones, pushes and runs, then prints results and cleans up', () => {
@@ -270,7 +264,7 @@ describe('gas-test run', () => {
       executionApi: { access: 'MYSELF' },
       oauthScopes: SCOPES,
     });
-    expect(push.head).toMatch(/^\/\/ gas-dev-config gas-test build /);
+    expect(push.head).toMatch(/^\/\/ gasdev gas-test build /);
     expect(existsSync(clone.cwd)).toBe(false);
   });
 

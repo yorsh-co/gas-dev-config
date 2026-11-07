@@ -33,7 +33,7 @@ describe('gasLibrary', () => {
     const { root, origin } = createProject({
       build,
       pkg: {
-        gasDevConfig: {
+        gasdev: {
           loadOrder: LOAD_ORDER,
           peers: { 'gas-lock': '^1.1.0' },
         },
@@ -55,7 +55,7 @@ describe('gasLibrary', () => {
     const { root, origin } = createProject({
       build,
       config: { targets: [{ branch: 'dist', exclude: ['web/'] }] },
-      pkg: { gasDevConfig: { loadOrder: ['web/w.ts', 'lib.ts'] } },
+      pkg: { gasdev: { loadOrder: ['web/w.ts', 'lib.ts'] } },
     });
 
     const result = runRelease(root);
@@ -70,7 +70,7 @@ describe('gasLibrary', () => {
     const plain = createProject({ build });
     const withPeers = createProject({
       build,
-      pkg: { gasDevConfig: { peers: { 'gas-lock': '^1.1.0' } } },
+      pkg: { gasdev: { peers: { 'gas-lock': '^1.1.0' } } },
     });
 
     expect(runRelease(plain.root).status).toBe(0);
@@ -90,7 +90,7 @@ describe('gasLibrary', () => {
       config: {
         targets: [{ branch: 'dist' }, { branch: 'bare', packageJson: false }],
       },
-      pkg: { gasDevConfig: { loadOrder: ['lib.ts'] } },
+      pkg: { gasdev: { loadOrder: ['lib.ts'] } },
     });
 
     const result = runRelease(root);
@@ -107,14 +107,14 @@ describe('gasLibrary', () => {
   it('refuses a missing built file in preflight, before touching the remote', () => {
     const { root, origin } = createProject({
       build,
-      pkg: { gasDevConfig: { loadOrder: ['lib.ts', 'gone.ts'] } },
+      pkg: { gasdev: { loadOrder: ['lib.ts', 'gone.ts'] } },
     });
 
     const result = runRelease(root);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toBe(
-      'gas-dev-config: [dist] gasDevConfig.loadOrder: dist/gone.js is missing — run the build first.\n',
+      'gasdev: [dist] gasdev.loadOrder: dist/gone.js is missing — run the build first.\n',
     );
     expect(git(origin, 'branch', '--list')).not.toContain('dist');
   });
@@ -122,21 +122,21 @@ describe('gasLibrary', () => {
   it('refuses when every entry is hidden or excluded', () => {
     const { root } = createProject({
       build,
-      pkg: { gasDevConfig: { loadOrder: ['lib.types.ts'] } },
+      pkg: { gasdev: { loadOrder: ['lib.types.ts'] } },
     });
 
     const result = runRelease(root);
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      '[dist] gasDevConfig.loadOrder: no entry is shipped',
+      '[dist] gasdev.loadOrder: no entry is shipped',
     );
   });
 
   it('logs the shipped load order in a dry run', () => {
     const { root } = createProject({
       build,
-      pkg: { gasDevConfig: { loadOrder: LOAD_ORDER } },
+      pkg: { gasdev: { loadOrder: LOAD_ORDER } },
     });
 
     const result = runRelease(root, ['--dry-run']);
@@ -148,38 +148,38 @@ describe('gasLibrary', () => {
   });
 });
 
-describe('gasDevConfig validation', () => {
+describe('gasdev validation', () => {
   it.each([
     [
       { loadOrder: [] },
-      'gasDevConfig.loadOrder must be a non-empty array of .ts paths.',
+      'gasdev.loadOrder must be a non-empty array of .ts paths.',
     ],
     [
       { loadOrder: 'lib.ts' },
-      'gasDevConfig.loadOrder must be a non-empty array of .ts paths.',
+      'gasdev.loadOrder must be a non-empty array of .ts paths.',
     ],
     [
       { loadOrder: ['lib.js'] },
-      'gasDevConfig.loadOrder must be a non-empty array of .ts paths.',
+      'gasdev.loadOrder must be a non-empty array of .ts paths.',
     ],
     [
       { loadOrder: ['lib.ts', 1] },
-      'gasDevConfig.loadOrder must be a non-empty array of .ts paths.',
+      'gasdev.loadOrder must be a non-empty array of .ts paths.',
     ],
     [
       { peers: ['gas-lock'] },
-      'gasDevConfig.peers must be an object of version ranges.',
+      'gasdev.peers must be an object of version ranges.',
     ],
     [
       { peers: { 'gas-lock': 1 } },
-      'gasDevConfig.peers must be an object of version ranges.',
+      'gasdev.peers must be an object of version ranges.',
     ],
-  ])('rejects %j', (gasDevConfig, message) => {
-    const { root } = createProject({ build, pkg: { gasDevConfig } });
+  ])('rejects %j', (gasdev, message) => {
+    const { root } = createProject({ build, pkg: { gasdev } });
 
     const result = runRelease(root);
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toBe(`gas-dev-config: ${message}\n`);
+    expect(result.stderr).toBe(`gasdev: ${message}\n`);
   });
 });

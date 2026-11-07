@@ -21,7 +21,7 @@ afterEach(() => {
  * @returns {string}
  */
 function project(declarations) {
-  const cwd = mkdtempSync(join(tmpdir(), 'gas-dev-config-release-unit-'));
+  const cwd = mkdtempSync(join(tmpdir(), 'gasdev-release-unit-'));
   dirs.push(cwd);
   if (declarations !== undefined) {
     writeFiles(cwd, { 'peer/gas-lib.peer.types.d.ts': declarations });

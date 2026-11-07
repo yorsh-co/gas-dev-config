@@ -34,7 +34,7 @@ export function readLibrary(name, dir) {
       `${name}: the dist tag's package.json is named ${JSON.stringify(pkg.name)}, expected "${name}".`,
     );
   }
-  const hint = `${name} needs a release made with gas-dev-config release and gasDevConfig.loadOrder`;
+  const hint = `${name} needs a release made with gasdev release and gasdev.loadOrder`;
   const meta = pkg.gasLibrary;
   if (
     !isObject(meta) ||

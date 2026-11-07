@@ -11,9 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const BIN = fileURLToPath(
-  new URL('../../../bin/gas-dev-config.js', import.meta.url),
-);
+const BIN = fileURLToPath(new URL('../../../bin/gasdev.js', import.meta.url));
 
 /** @type {string[]} */
 const sandboxes = [];
@@ -24,7 +22,7 @@ const sandboxes = [];
  * @returns {string}
  */
 export function createSandbox() {
-  const sandbox = mkdtempSync(join(tmpdir(), 'gas-dev-config-bundle-'));
+  const sandbox = mkdtempSync(join(tmpdir(), 'gasdev-bundle-'));
   sandboxes.push(sandbox);
   return sandbox;
 }
@@ -128,14 +126,14 @@ export function createLibrary(sandbox, name, versions) {
  * Creates a project directory with a package.json.
  *
  * @param {string} sandbox
- * @param {unknown} [bundleConfig] The `gasDevConfig.bundle` key.
+ * @param {unknown} [bundleConfig] The `gasdev.bundle` key.
  * @returns {string} The project root.
  */
 export function createProject(sandbox, bundleConfig) {
   const root = join(sandbox, 'project');
   mkdirSync(root, { recursive: true });
   writeFiles(root, {
-    'package.json': `${JSON.stringify({ name: 'app', version: '1.0.0', ...(bundleConfig !== undefined && { gasDevConfig: { bundle: bundleConfig } }) }, null, 2)}\n`,
+    'package.json': `${JSON.stringify({ name: 'app', version: '1.0.0', ...(bundleConfig !== undefined && { gasdev: { bundle: bundleConfig } }) }, null, 2)}\n`,
   });
   return root;
 }

@@ -40,7 +40,7 @@ export function createProject({
   git = false,
   files = {},
 } = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'gas-dev-config-'));
+  const root = mkdtempSync(join(tmpdir(), 'gasdev-'));
   sandboxes.push(root);
   writeFiles(root, {
     'package.json': `${JSON.stringify({ name: 'my-app', version: '1.0.0', ...pkg }, null, 2)}\n`,
@@ -68,7 +68,7 @@ export function cleanup() {
  * @returns {{ logPath: string, cleanup: () => void }}
  */
 export function createFakeLog() {
-  const dir = mkdtempSync(join(tmpdir(), 'gas-dev-config-fake-'));
+  const dir = mkdtempSync(join(tmpdir(), 'gasdev-fake-'));
   return {
     logPath: join(dir, 'calls.jsonl'),
     cleanup: () => rmSync(dir, { recursive: true, force: true }),

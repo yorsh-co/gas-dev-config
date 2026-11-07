@@ -170,7 +170,7 @@ describe('githubRelease', () => {
 
       expect(result.status).toBe(1);
       expect(result.stderr).toContain('dist: missing non_fast_forward');
-      expect(result.stderr).toContain('gas-dev-config github --fix');
+      expect(result.stderr).toContain('gasdev github --fix');
       expect(branches(origin)).not.toContain('dist');
       expect(git(origin, 'tag', '--list')).not.toContain('dist/v1.0.0');
       expect(gh.calls().some(({ args }) => args[0] === 'release')).toBe(false);
@@ -201,7 +201,7 @@ describe('githubRelease', () => {
 
       expect(result.status).toBe(1);
       expect(result.stderr).toContain('dist: missing non_fast_forward');
-      expect(result.stderr).toContain('gas-dev-config github --fix');
+      expect(result.stderr).toContain('gasdev github --fix');
       expect(gh.calls().some(({ args }) => args[0] === 'release')).toBe(false);
     });
 
@@ -262,7 +262,7 @@ describe('githubRelease', () => {
 
   it('fails when gh is not installed', () => {
     const { root, origin } = setup();
-    const bin = mkdtempSync(join(tmpdir(), 'gas-dev-config-release-nogh-'));
+    const bin = mkdtempSync(join(tmpdir(), 'gasdev-release-nogh-'));
     try {
       const gitPath = execFileSync('which', ['git'], {
         encoding: 'utf8',

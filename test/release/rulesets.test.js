@@ -194,7 +194,7 @@ describe('assertProtected', () => {
     const message = failure(targets('dist'));
     expect(message).toMatch(/dist: missing .*; tags: no active tag ruleset\./);
     expect(message.endsWith('to apply the gas-* rulesets.')).toBe(true);
-    expect(message).toContain('npx gas-dev-config github --fix');
+    expect(message).toContain('npx gasdev github --fix');
   });
 
   it('fails on a gh error', () => {

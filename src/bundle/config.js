@@ -138,7 +138,7 @@ function validateFilePath(value, path, extension) {
 }
 
 /**
- * Reads and validates `gasDevConfig.bundle` from the project's package.json.
+ * Reads and validates `gasdev.bundle` from the project's package.json.
  *
  * @param {string} cwd Project root.
  * @returns {BundleConfig}
@@ -155,31 +155,24 @@ export function loadConfig(cwd) {
       `Cannot read package.json in ${cwd}: ${/** @type {Error} */ (error).message}`,
     );
   }
-  const parent = pkg.gasDevConfig;
+  const parent = pkg.gasdev;
   const config = isObject(parent) ? parent.bundle : undefined;
   if (!isObject(config)) {
-    throw new BundleError('package.json has no "gasDevConfig.bundle" object.');
+    throw new BundleError('package.json has no "gasdev.bundle" object.');
   }
-  rejectUnknownKeys(config, CONFIG_KEYS, 'gasDevConfig.bundle');
+  rejectUnknownKeys(config, CONFIG_KEYS, 'gasdev.bundle');
   /** @type {BundleConfig} */
   const result = {
-    libraries: normalizeLibraries(
-      config.libraries,
-      'gasDevConfig.bundle.libraries',
-    ),
+    libraries: normalizeLibraries(config.libraries, 'gasdev.bundle.libraries'),
     outFile:
       config.outFile === undefined
         ? DEFAULT_OUT_FILE
-        : validateFilePath(
-            config.outFile,
-            'gasDevConfig.bundle.outFile',
-            '.js',
-          ),
+        : validateFilePath(config.outFile, 'gasdev.bundle.outFile', '.js'),
   };
   if (config.typesFile !== undefined) {
     result.typesFile = validateFilePath(
       config.typesFile,
-      'gasDevConfig.bundle.typesFile',
+      'gasdev.bundle.typesFile',
       '.d.ts',
     );
   }

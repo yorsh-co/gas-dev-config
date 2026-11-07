@@ -55,7 +55,7 @@ export async function deploy({
   /** @type {string} */
   let authDir;
   try {
-    authDir = mkdtempSync(join(authParent, 'gas-dev-config-auth-'));
+    authDir = mkdtempSync(join(authParent, 'gasdev-auth-'));
   } catch (error) {
     throw new DeployError(
       `cannot create credentials dir in ${authParent}: ${/** @type {Error} */ (error).message}`,
@@ -132,10 +132,7 @@ export async function deploy({
     if (deploymentId === undefined || sha === undefined) {
       stdout.write('Pushed (push only).\n');
       writeOutput(inputs.outputPath, 'url', '');
-      writeSummary(
-        inputs.summaryPath,
-        '### gas-dev-config\n\nPushed: push only.\n',
-      );
+      writeSummary(inputs.summaryPath, '### gasdev\n\nPushed: push only.\n');
       return;
     }
 
@@ -146,7 +143,7 @@ export async function deploy({
     writeOutput(inputs.outputPath, 'url', url);
     writeSummary(
       inputs.summaryPath,
-      `### gas-dev-config\n\nDeployed version ${version}: ${url}\n`,
+      `### gasdev\n\nDeployed version ${version}: ${url}\n`,
     );
   } finally {
     rmSync(authDir, { recursive: true, force: true });

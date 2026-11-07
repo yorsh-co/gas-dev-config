@@ -9,7 +9,7 @@ import { DeployError } from '../../src/ci/errors.js';
 /** @type {string} */
 let cwd;
 beforeEach(() => {
-  cwd = mkdtempSync(join(tmpdir(), 'gas-dev-config-cwd-'));
+  cwd = mkdtempSync(join(tmpdir(), 'gasdev-cwd-'));
 });
 afterEach(() => rmSync(cwd, { recursive: true, force: true }));
 

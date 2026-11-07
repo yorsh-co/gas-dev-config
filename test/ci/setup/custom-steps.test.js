@@ -118,7 +118,7 @@ describe('setup with steps', () => {
     const cwd = createProject({
       git: true,
       gitignore: '.env\n.clasp.json\nappsscript.json\nstep-ran.json\n',
-      pkg: { gasDevConfig: { ci: { steps: 'steps.js' } } },
+      pkg: { gasdev: { ci: { steps: 'steps.js' } } },
     });
     if (stepsFile === 'syntax-error.js') {
       writeFileSync(join(cwd, 'steps.js'), 'export default [ {\n');

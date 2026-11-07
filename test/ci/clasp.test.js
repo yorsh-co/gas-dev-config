@@ -59,10 +59,10 @@ describe('createClasp', () => {
     extraEnv.clasp_config_project = '/elsewhere/project';
     extraEnv.clasp_config_ignore = '/elsewhere/ignore';
     extraEnv.CLASPRC_JSON = '{"tokens":{"default":{}}}';
-    extraEnv.GAS_DEV_CONFIG_SENTINEL = 'x';
+    extraEnv.GASDEV_SENTINEL = 'x';
     make().push();
     const keys = readCalls(logPath)[0]?.envKeys ?? [];
-    expect(keys).toContain('GAS_DEV_CONFIG_SENTINEL');
+    expect(keys).toContain('GASDEV_SENTINEL');
     for (const key of STRIPPED) expect(keys).not.toContain(key);
   });
 
@@ -71,10 +71,10 @@ describe('createClasp', () => {
     extraEnv.Clasp_Config_Project = '/elsewhere/project';
     extraEnv.CLASP_CONFIG_IGNORE = '/elsewhere/ignore';
     extraEnv.clasprc_json = '{"tokens":{"default":{}}}';
-    extraEnv.GAS_DEV_CONFIG_SENTINEL = 'x';
+    extraEnv.GASDEV_SENTINEL = 'x';
     make().push();
     const keys = readCalls(logPath)[0]?.envKeys ?? [];
-    expect(keys).toContain('GAS_DEV_CONFIG_SENTINEL');
+    expect(keys).toContain('GASDEV_SENTINEL');
     for (const key of [
       'CLASP_CONFIG_AUTH',
       'Clasp_Config_Project',
@@ -172,9 +172,9 @@ describe('createClasp', () => {
     });
     expect(existsSync(/** @type {string} */ (call?.projectDir))).toBe(false);
     expect(call?.projectDir).not.toBe(dir);
-    expect(
-      call?.projectDir?.startsWith(join(tmpdir(), 'gas-dev-config-pull-')),
-    ).toBe(true);
+    expect(call?.projectDir?.startsWith(join(tmpdir(), 'gasdev-pull-'))).toBe(
+      true,
+    );
   });
 
   it('removes the temp dir when pull fails', () => {
@@ -361,7 +361,7 @@ describe('createClasp setup commands', () => {
       'My app',
       '--rootDir',
     ]);
-    expect(call?.cwd).toContain('gas-dev-config-create-');
+    expect(call?.cwd).toContain('gasdev-create-');
     expect(rootDir).toBeTruthy();
     expect(existsSync(rootDir)).toBe(false);
   });
@@ -421,13 +421,13 @@ describe('createClasp setup commands', () => {
     extraEnv.clasp_config_project = '/elsewhere/project';
     extraEnv.clasp_config_ignore = '/elsewhere/ignore';
     extraEnv.CLASPRC_JSON = '{"tokens":{"default":{}}}';
-    extraEnv.GAS_DEV_CONFIG_SENTINEL = 'x';
+    extraEnv.GASDEV_SENTINEL = 'x';
     make().whoAmI();
     make().login();
     const calls = readCalls(logPath);
     expect(calls).toHaveLength(2);
     for (const call of calls) {
-      expect(call.envKeys).toContain('GAS_DEV_CONFIG_SENTINEL');
+      expect(call.envKeys).toContain('GASDEV_SENTINEL');
       for (const key of STRIPPED) expect(call.envKeys).not.toContain(key);
     }
   });

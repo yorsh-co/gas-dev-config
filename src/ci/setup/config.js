@@ -67,7 +67,7 @@ function errorMessage(error) {
 }
 
 /**
- * Validates the `gasDevConfig.ci` package.json key.
+ * Validates the `gasdev.ci` package.json key.
  *
  * @param {unknown} options
  * @param {string} cwd Project root, used to resolve and check `steps`.
@@ -79,24 +79,24 @@ function validateOptions(options, cwd) {
     return { title: undefined, stepsPath: undefined };
   }
   if (!isObject(options)) {
-    throw new DeployError('gasDevConfig.ci must be an object.');
+    throw new DeployError('gasdev.ci must be an object.');
   }
   const unknown = Object.keys(options).find((k) => !KNOWN_KEYS.includes(k));
   if (unknown !== undefined) {
-    throw new DeployError(`gasDevConfig.ci.${unknown} is not a known option.`);
+    throw new DeployError(`gasdev.ci.${unknown} is not a known option.`);
   }
   const { title } = options;
   if (
     title !== undefined &&
     (typeof title !== 'string' || title.trim() === '')
   ) {
-    throw new DeployError('gasDevConfig.ci.title must be a non-empty string.');
+    throw new DeployError('gasdev.ci.title must be a non-empty string.');
   }
   return { title, stepsPath: validateSteps(options.steps, cwd) };
 }
 
 /**
- * Validates `gasDevConfig.ci.steps`: a relative `.js`/`.mjs` file inside the project.
+ * Validates `gasdev.ci.steps`: a relative `.js`/`.mjs` file inside the project.
  *
  * @param {unknown} value
  * @param {string} cwd
@@ -108,16 +108,16 @@ function validateSteps(value, cwd) {
     return undefined;
   }
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new DeployError('gasDevConfig.ci.steps must be a non-empty string.');
+    throw new DeployError('gasdev.ci.steps must be a non-empty string.');
   }
   if (isAbsolute(value) || value.split(/[\\/]/).includes('..')) {
     throw new DeployError(
-      `gasDevConfig.ci.steps "${value}" must be a relative path inside the project.`,
+      `gasdev.ci.steps "${value}" must be a relative path inside the project.`,
     );
   }
   if (!/\.m?js$/.test(value)) {
     throw new DeployError(
-      `gasDevConfig.ci.steps "${value}" must end in .js or .mjs.`,
+      `gasdev.ci.steps "${value}" must end in .js or .mjs.`,
     );
   }
   const path = resolve(cwd, value);
@@ -128,7 +128,7 @@ function validateSteps(value, cwd) {
     // Reported below.
   }
   if (!isFile) {
-    throw new DeployError(`gasDevConfig.ci.steps file "${value}" not found.`);
+    throw new DeployError(`gasdev.ci.steps file "${value}" not found.`);
   }
   return path;
 }
@@ -158,7 +158,7 @@ function validateRootDir(value) {
 }
 
 /**
- * Loads the project's package.json, `gasDevConfig.ci` options and templates.
+ * Loads the project's package.json, `gasdev.ci` options and templates.
  *
  * @param {string} cwd Project root.
  * @returns {DeployConfig}
@@ -169,7 +169,7 @@ export function loadConfig(cwd) {
   if (typeof pkg.name !== 'string' || pkg.name === '') {
     throw new DeployError('package.json has no "name".');
   }
-  const root = /** @type {{ ci?: unknown } | undefined} */ (pkg.gasDevConfig);
+  const root = /** @type {{ ci?: unknown } | undefined} */ (pkg.gasdev);
   const { title, stepsPath } = validateOptions(root?.ci, cwd);
 
   const paths = {
