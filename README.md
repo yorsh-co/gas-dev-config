@@ -9,7 +9,7 @@
 
 - [About gasdev](#about-gasdev)
   - [Features](#features)
-  - [The gasdev tools](#the-gasdev-tools)
+  - [The gasdev tools](#gasdev-tools)
 - [Getting started](#getting-started)
   - [Requirements](#requirements)
   - [Install](#install)
@@ -134,7 +134,8 @@ For a new project:
 
 1. Add `gasdev` and the peer dependencies as dev dependencies (see [Install](#install)).
 2. Run `npx gasdev init` to create the ignore files, `.github/dependabot.yml` and the missing required scripts.
-3. Run `npm install`, then `npm run check`.
+3. Add the config `init` does not create: [Prettier](#prettier), [TypeScript](#typescript) and [ESLint](#eslint). Add the `build`, `build:watch` and `typecheck` scripts, which `init` only expects to exist, and `rimraf` as a dev dependency for the `clean` script.
+4. Run `npm install`, then `npm run check`.
 
 For an existing project, follow [Migrating an existing project](#migrating-an-existing-project).
 
